@@ -7,13 +7,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/app/app-shell";
 import { DemoStoreProvider } from "@/components/app/demo-store";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
 const themeBootstrap = `try {
   var choice = localStorage.getItem("agentic-ops-theme");
-  var dark = choice === "light" ? false : choice === "system" ? matchMedia("(prefers-color-scheme: dark)").matches : true;
+  var dark = choice === "dark" || (choice === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
   document.documentElement.classList.toggle("dark", dark);
-} catch (_) { document.documentElement.classList.add("dark"); }`;
+} catch (_) { document.documentElement.classList.remove("dark"); }`;
 
 export const metadata: Metadata = {
   title: "Agentic Ops",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={cn("dark font-sans", geist.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body>
         <Script id="theme-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
         <TooltipProvider>

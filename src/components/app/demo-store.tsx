@@ -18,13 +18,14 @@ const storedWorkflowSchema = z.object({
   createdAt: z.string(), updatedAt: z.string(), startedAt: z.string().optional(), completedAt: z.string().optional(), errorSummary: z.string().optional(),
 });
 const storageSchema = z.object({
-  createdWorkflows: z.array(storedWorkflowSchema).max(30),
+  createdWorkflows: z.array(storedWorkflowSchema),
   approvalDecisions: z.record(z.string(), z.object({ status: z.enum(["approved", "rejected"]), decidedAt: z.string() })),
 });
 type ApprovalDecision = { status: "approved" | "rejected"; decidedAt: string };
 
 type DemoStore = {
   hydrated: boolean;
+  storageAvailable: boolean;
   workflows: Workflow[];
   workflowStages: WorkflowStage[];
   workflowTasks: WorkflowTask[];
@@ -57,6 +58,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
   const [createdWorkflows, setCreatedWorkflows] = useState<Workflow[]>([]);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalDecision>>({});
   const [hydrated, setHydrated] = useState(false);
+  const [storageAvailable, setStorageAvailable] = useState(true);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Rehydrate the browser-only demo workspace after server rendering. */
   useEffect(() => {
@@ -69,15 +71,20 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
           setApprovalDecisions(parsed.data.approvalDecisions);
         }
       }
-    } catch { /* Corrupt demo storage falls back to the seeded workspace. */ }
+    } catch { setStorageAvailable(false); }
     setHydrated(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Reflect unavailable browser storage without crashing the workspace. */
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ createdWorkflows, approvalDecisions }));
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ createdWorkflows, approvalDecisions }));
+      setStorageAvailable(true);
+    } catch { setStorageAvailable(false); }
   }, [createdWorkflows, approvalDecisions, hydrated]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const value = useMemo<DemoStore>(() => {
     const resolvedWorkflows = seedWorkflows.map((workflow): Workflow => {
@@ -126,6 +133,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
     });
     return {
       hydrated,
+      storageAvailable,
       workflows: [...createdWorkflows, ...resolvedWorkflows],
       workflowStages: [...createdStages, ...resolvedStages],
       workflowTasks: [...createdTasks, ...resolvedTasks],
@@ -146,7 +154,7 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         setApprovalDecisions((current) => current[id] ? current : { ...current, [id]: { status, decidedAt: new Date().toISOString() } });
       },
     };
-  }, [createdWorkflows, approvalDecisions, hydrated]);
+  }, [createdWorkflows, approvalDecisions, hydrated, storageAvailable]);
 
   return <DemoStoreContext.Provider value={value}>{children}</DemoStoreContext.Provider>;
 }

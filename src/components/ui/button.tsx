@@ -1,9 +1,13 @@
+"use client"
+
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { motion } from "motion/react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-[12px] font-medium whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
   {
     variants: {
       variant: {
@@ -43,11 +47,24 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  render,
+  disabled,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const reducedMotion = useReducedMotion()
+  const hoverOffset = variant === "default" ? -2 : variant === "outline" || variant === "secondary" ? -1 : 0
+
   return (
     <ButtonPrimitive
       data-slot="button"
+      data-motion={render ? "css" : "motion"}
+      render={render ?? <motion.button
+        whileHover={reducedMotion || disabled || hoverOffset === 0 ? undefined : { y: hoverOffset }}
+        whileTap={reducedMotion || disabled ? undefined : { scale: variant === "default" ? 0.97 : 0.985, y: 0 }}
+        transition={{ type: "spring", stiffness: 500, damping: 34 }}
+      />}
+      data-variant={variant}
+      disabled={disabled}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

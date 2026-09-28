@@ -1,101 +1,48 @@
 "use client";
-
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { Menu } from "@base-ui/react/menu";
+import { AnimatePresence, motion } from "motion/react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { Check, ChevronDown, Monitor, Moon, Sun } from "lucide-react";
-import { cn } from "@/lib/utils";
-
 type ThemeChoice = "system" | "light" | "dark";
-
 const storageKey = "agentic-ops-theme";
-const options = [
-  { value: "system", label: "System", icon: Monitor },
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-] as const;
-
+const changeEvent = "agentic-ops-appearance";
+const options = [{ value: "light", label: "Light", icon: Sun }, { value: "dark", label: "Dark", icon: Moon }, { value: "system", label: "System", icon: Monitor }] as const;
 function storedChoice(): ThemeChoice {
-  try {
-    const value = window.localStorage.getItem(storageKey);
-    if (value === "system" || value === "light" || value === "dark") return value;
-  } catch { /* A private browser may block storage; the control still works for this visit. */ }
-  return "dark";
+  try { const value = window.localStorage.getItem(storageKey); if (value === "system" || value === "light" || value === "dark") return value; } catch {}
+  return "light";
 }
-
 export function ThemeSelector() {
-  const [choice, setChoice] = useState<ThemeChoice>("dark");
+  const [choice, setChoice] = useState<ThemeChoice>("light");
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  /* eslint-disable react-hooks/set-state-in-effect -- Read the browser preference after hydration. */
+  const reduced = useReducedMotion();
+  /* eslint-disable react-hooks/set-state-in-effect -- The persisted preference is browser-only. */
   useEffect(() => {
-    setChoice(storedChoice());
-    setReady(true);
+    setChoice(storedChoice()); setReady(true);
+    const sync = (event: Event) => {
+      if (event instanceof CustomEvent && ["light", "dark", "system"].includes(event.detail)) setChoice(event.detail as ThemeChoice);
+      else setChoice(storedChoice());
+    };
+    window.addEventListener(changeEvent, sync); window.addEventListener("storage", sync);
+    return () => { window.removeEventListener(changeEvent, sync); window.removeEventListener("storage", sync); };
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
-
   useEffect(() => {
     if (!ready) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      const dark = choice === "dark" || (choice === "system" && media.matches);
-      document.documentElement.classList.toggle("dark", dark);
-    };
-    apply();
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
+    const apply = () => document.documentElement.classList.toggle("dark", choice === "dark" || (choice === "system" && media.matches));
+    apply(); media.addEventListener("change", apply); return () => media.removeEventListener("change", apply);
   }, [choice, ready]);
-
-  useEffect(() => {
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, []);
-
-  const selected = ready ? options.find((option) => option.value === choice) ?? options[2] : options[0];
-  const SelectedIcon = selected.icon;
-
-  function select(value: ThemeChoice) {
+  const selected = options.find(option => option.value === choice) ?? options[0];
+  const Icon = selected.icon;
+  function select(value: unknown) {
+    if (value !== "light" && value !== "dark" && value !== "system") return;
     setChoice(value);
-    try { window.localStorage.setItem(storageKey, value); } catch { /* Keep the in-memory selection. */ }
-    setOpen(false);
-    triggerRef.current?.focus();
+    try { window.localStorage.setItem(storageKey, value); } catch {}
+    window.dispatchEvent(new CustomEvent(changeEvent, { detail: value })); setOpen(false);
   }
-
-  return (
-    <div ref={menuRef} className="relative" onKeyDown={(event) => { if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } }}>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-label={ready ? `Appearance: ${selected.label}` : "Appearance"}
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((current) => !current)}
-        className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-card/70 px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <SelectedIcon aria-hidden="true" className="size-3.5" />
-        <span className="hidden text-[11px] font-medium xl:inline">{ready ? selected.label : "Appearance"}</span>
-        <ChevronDown aria-hidden="true" className={cn("hidden size-3 opacity-60 transition-transform xl:inline", open && "rotate-180")} />
-      </button>
-      {open && <div className="absolute right-0 top-full z-40 mt-1.5 w-40 rounded-md border border-border bg-popover p-1 shadow-lg shadow-black/10">
-        <p className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Appearance</p>
-        {options.map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={ready && choice === value}
-            onClick={() => select(value)}
-            className={cn("flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", ready && choice === value ? "bg-accent text-foreground" : "text-muted-foreground")}
-          >
-            <Icon aria-hidden="true" className="size-3.5" />
-            <span className="flex-1">{label}</span>
-            {ready && choice === value && <Check aria-hidden="true" className="size-3.5" />}
-          </button>
-        ))}
-      </div>}
-    </div>
-  );
+  return <Menu.Root open={open} onOpenChange={setOpen}><Menu.Trigger aria-label={"Appearance: " + selected.label} className="flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"><Icon className="size-3" /><span className="hidden text-[10px] xl:inline">{selected.label}</span><ChevronDown className="hidden size-2.5 xl:inline" /></Menu.Trigger>
+    <AnimatePresence>{open && <Menu.Portal keepMounted><Menu.Positioner sideOffset={6} align="end" className="z-50"><Menu.Popup render={<motion.div initial={reduced ? false : { opacity: 0, y: -3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: reduced ? 0 : -3 }} transition={{ duration: .15 }} />} className="w-40 rounded-md border border-border bg-popover p-1 shadow-lg outline-none"><Menu.Group><Menu.GroupLabel className="px-2 py-2 text-[10px] text-muted-foreground">Appearance</Menu.GroupLabel><Menu.RadioGroup value={choice} onValueChange={select}>{options.map(({ value, label, icon: ChoiceIcon }) => <Menu.RadioItem key={value} value={value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-xs outline-none data-highlighted:bg-accent"><ChoiceIcon className="size-3.5 text-muted-foreground" /><span className="flex-1">{label}</span><Menu.RadioItemIndicator><Check className="size-3" /></Menu.RadioItemIndicator></Menu.RadioItem>)}</Menu.RadioGroup></Menu.Group></Menu.Popup></Menu.Positioner></Menu.Portal>}</AnimatePresence>
+  </Menu.Root>;
 }

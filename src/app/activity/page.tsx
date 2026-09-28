@@ -1,170 +1,69 @@
 "use client";
 
-import { useState } from "react";
-import { Activity, Eye, ListFilter } from "lucide-react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Tabs } from "@base-ui/react/tabs";
+import { Activity, ArrowDown, ListFilter, Search, ShieldCheck, X } from "lucide-react";
+import { motion } from "motion/react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { ActivityItem } from "@/components/activity/activity-item";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
 import { useDemoStore } from "@/components/app/demo-store";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ActivityCategory, AgentEvent } from "@/types/domain";
 
 type Filter = "all" | ActivityCategory;
-
-const filters: { value: Filter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "agent", label: "Agents" },
-  { value: "tool", label: "Tools" },
-  { value: "workflow", label: "Workflows" },
-  { value: "approval", label: "Approvals" },
-  { value: "error", label: "Errors" },
-];
-
-const emptyCopy: Record<Filter, { title: string; description: string }> = {
-  all: {
-    title: "No activity yet",
-    description: "Workflow events, tool calls and approval decisions will appear here as work progresses.",
-  },
-  agent: {
-    title: "No agent events in this view",
-    description: "Agent starts, task updates and qualification summaries will appear here.",
-  },
-  tool: {
-    title: "No tool events in this view",
-    description: "Validated tool calls and their results will appear here when a workflow uses a tool.",
-  },
-  workflow: {
-    title: "No workflow events in this view",
-    description: "Workflow starts, task completions and finished runs will appear here.",
-  },
-  approval: {
-    title: "No approval events in this view",
-    description: "Requests and recorded human decisions will appear here.",
-  },
-  error: {
-    title: "No errors in this view",
-    description: "Execution or source verification failures will appear here when attention is needed.",
-  },
-};
-
-function dayLabel(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
-
+const filters: { value: Filter; label: string }[] = [{ value: "all", label: "All events" }, { value: "agent", label: "Agents" }, { value: "tool", label: "Tools" }, { value: "workflow", label: "Workflows" }, { value: "approval", label: "Approvals" }, { value: "error", label: "Errors" }];
 function groupByDay(events: AgentEvent[]) {
   const groups: { day: string; events: AgentEvent[] }[] = [];
-  for (const event of events) {
-    const day = event.timestamp.slice(0, 10);
-    const last = groups[groups.length - 1];
-    if (last?.day === day) last.events.push(event);
-    else groups.push({ day, events: [event] });
-  }
+  for (const event of events) { const day = event.timestamp.slice(0, 10); const last = groups[groups.length - 1]; if (last?.day === day) last.events.push(event); else groups.push({ day, events: [event] }); }
   return groups;
 }
+const dateFormat = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
-export default function ActivityPage() {
+function ActivityWorkspace() {
   const { activity, workflows } = useDemoStore();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const reducedMotion = useReducedMotion();
   const [filter, setFilter] = useState<Filter>("all");
-  const visible = activity.filter((event) => filter === "all" || event.category === filter);
+  const [query, setQuery] = useState("");
+  const workflowId = searchParams.get("workflow") ?? "all";
+  const workflowEvents = activity.filter((event) => workflowId === "all" || event.workflowId === workflowId);
+  const term = query.trim().toLowerCase();
+  const visible = workflowEvents.filter((event) => (filter === "all" || event.category === filter) && (!term || [event.title, event.description, event.agent ?? "", event.toolName ?? ""].some((value) => value.toLowerCase().includes(term))));
   const groups = groupByDay(visible);
   const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow.title]));
-  const attentionCount = activity.filter((event) => event.status === "failed").length;
-
-  return (
-    <div className="space-y-7">
-      <PageHeader
-        eyebrow="Execution history"
-        title="Activity"
-        description="A trace of what agents, tools and workflows have done in this workspace."
-        actions={
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
-            <Activity aria-hidden="true" className="size-3.5 text-[var(--success-fg)]" />
-            Demo event stream
-          </span>
-        }
-      />
-
-      <div className="panel flex flex-col gap-3 px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <div className="flex items-start gap-2">
-          <Eye aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-          <p>Events show safe summaries, actions and results. Hidden agent reasoning is not displayed.</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-4 font-mono tabular-nums">
-          <span><strong className="font-semibold text-foreground">{activity.length}</strong> events</span>
-          <span><strong className={`font-semibold ${attentionCount ? "text-[var(--danger-fg)]" : "text-foreground"}`}>{attentionCount}</strong> needs attention</span>
-        </div>
-      </div>
-
-      <section aria-label="Audit log">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="section-label">Global audit log</p>
-            <h2 className="mt-1 text-[15px] font-semibold text-foreground">Event stream</h2>
-          </div>
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">{visible.length} shown</span>
-        </div>
-
-        <div className="mb-3 flex max-w-full items-center gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1" role="group" aria-label="Filter activity by category">
-          {filters.map((item) => {
-            const count = item.value === "all"
-              ? activity.length
-              : activity.filter((event) => event.category === item.value).length;
-            return (
-              <button
-                key={item.value}
-                type="button"
-                aria-pressed={filter === item.value}
-                onClick={() => setFilter(item.value)}
-                className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${filter === item.value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
-              >
-                {item.label}
-                <span className="font-mono text-[10px] tabular-nums opacity-65">{count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {groups.length ? (
-          <div className="panel overflow-hidden">
-            {groups.map((group, index) => (
-              <div key={group.day}>
-                <div className={`flex items-center justify-between border-b border-border bg-background/25 px-4 py-2 sm:px-5 ${index > 0 ? "border-t" : ""}`}>
-                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{dayLabel(group.day)}</h3>
-                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
-                    {group.events.length} {group.events.length === 1 ? "event" : "events"}
-                  </span>
-                </div>
-                <ol>
-                  {group.events.map((event) => (
-                    <ActivityItem
-                      key={event.id}
-                      event={event}
-                      workflowTitle={workflowsById.get(event.workflowId) ?? "Workflow"}
-                    />
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="panel">
-            <EmptyState
-              icon={ListFilter}
-              title={emptyCopy[filter].title}
-              description={emptyCopy[filter].description}
-              action={
-                filter !== "all" && <Button variant="outline" size="sm" onClick={() => setFilter("all")}>Show all events</Button>
-              }
-            />
-          </div>
-        )}
-      </section>
+  const attentionCount = workflowEvents.filter((event) => event.status === "failed").length;
+  const clearFilters = () => { setFilter("all"); setQuery(""); router.replace("/activity", { scroll: false }); };
+  return <div className="flex flex-col gap-6">
+    <PageHeader eyebrow="Operations / Observability" title="Execution trace" description="Follow the decisions, tools, and handoffs behind every workflow." actions={<span className="inline-flex items-center gap-2 text-xs text-muted-foreground"><Activity aria-hidden className="size-3.5" />Recorded demo events</span>} />
+    <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-border pb-5">
+      <div className="flex items-baseline gap-2"><span className="font-mono text-2xl font-medium tabular-nums">{workflowEvents.length}</span><span className="text-xs text-muted-foreground">{workflowEvents.length === 1 ? "recorded event" : "recorded events"}</span></div>
+      <div className="flex items-baseline gap-2"><span className="font-mono text-2xl font-medium tabular-nums">{workflowEvents.filter((event) => event.category === "tool").length}</span><span className="text-xs text-muted-foreground">tool events</span></div>
+      <div className="flex items-baseline gap-2"><span className={attentionCount ? "font-mono text-2xl font-medium tabular-nums text-[var(--danger-fg)]" : "font-mono text-2xl font-medium tabular-nums"}>{attentionCount}</span><span className="text-xs text-muted-foreground">needs attention</span></div>
+      <span className="ml-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground lg:flex"><ShieldCheck aria-hidden className="size-3.5" />Safe summaries and recorded results</span>
     </div>
-  );
+    <Tabs.Root value={filter} onValueChange={(value) => setFilter(value as Filter)} className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto"><Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input id="activity-search" type="search" aria-label="Search events" placeholder="Search events, agents, or tools…" value={query} onChange={(event) => setQuery(event.target.value)} className="pl-9" /></div>
+        <select id="activity-workflow" aria-label="Filter activity by workflow" value={workflowId} onChange={(event) => router.replace(event.target.value === "all" ? "/activity" : `/activity?workflow=${encodeURIComponent(event.target.value)}`, { scroll: false })} className="h-9 max-w-full rounded-md border border-border bg-card px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-[280px]"><option value="all">All workflows</option>{workflows.map((workflow) => <option key={workflow.id} value={workflow.id}>{workflow.title}</option>)}</select>
+        {(query || workflowId !== "all" || filter !== "all") && <Button variant="ghost" size="sm" onClick={clearFilters}><X data-icon="inline-start" />Reset</Button>}
+      </div>
+      <Tabs.List aria-label="Filter activity by category" className="flex max-w-full gap-5 overflow-x-auto border-b border-border">
+        {filters.map((item) => <Tabs.Tab key={item.value} value={item.value} className="interactive-tab relative flex shrink-0 items-center gap-1.5 pb-3 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[active]:font-medium data-[active]:text-foreground">{item.label}<span className="font-mono text-[10px] text-muted-foreground">{item.value === "all" ? workflowEvents.length : workflowEvents.filter((event) => event.category === item.value).length}</span>{filter === item.value && <motion.span layoutId="activity-category" className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" transition={{ type: "spring", duration: reducedMotion ? 0 : .3, bounce: 0 }} />}</Tabs.Tab>)}
+      </Tabs.List>
+      <Tabs.Panel value={filter} className="outline-none">
+        <motion.div key={filter} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .18 }}>
+          <div className="mb-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>{visible.length} {visible.length === 1 ? "event" : "events"} · expand a row to inspect</span><span className="flex items-center gap-1"><ArrowDown aria-hidden className="size-3" />Newest first · UTC</span></div>
+          {groups.length ? <div className="overflow-hidden rounded-lg border border-border bg-card">{groups.map((group) => <div key={group.day}><div className="flex items-center justify-between border-b border-border bg-muted/35 px-4 py-2.5 sm:px-5"><h2 className="text-[11px] font-medium">{dateFormat.format(new Date(group.day))}</h2><span className="font-mono text-[10px] text-muted-foreground">{group.events.length} {group.events.length === 1 ? "event" : "events"}</span></div><ol>{group.events.map((event) => <ActivityItem key={event.id} event={event} workflowTitle={workflowsById.get(event.workflowId) ?? "Workflow"} />)}</ol></div>)}</div> : <EmptyState icon={ListFilter} title="No events in this view" description="Try another workflow, event category, or search term. Recorded actions will appear here as the workspace changes." action={<Button variant="outline" size="sm" onClick={clearFilters}>Show all events</Button>} />}
+        </motion.div>
+      </Tabs.Panel>
+    </Tabs.Root>
+  </div>;
 }
+
+export default function ActivityPage() { return <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>}><ActivityWorkspace /></Suspense>; }

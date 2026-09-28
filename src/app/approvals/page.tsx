@@ -1,103 +1,81 @@
 "use client";
 
-import { Inbox, LockKeyhole, ShieldCheck } from "lucide-react";
-import { ApprovalCard } from "@/components/approvals/approval-card";
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
+import { ArrowUpRight, CheckCheck, Inbox, LockKeyhole, Mail } from "lucide-react";
+import { ApprovalWorkspace } from "@/components/approvals/approval-card";
 import { EmptyState } from "@/components/app/empty-state";
 import { PageHeader } from "@/components/app/page-header";
+import { StatusBadge } from "@/components/app/status-badge";
 import { useDemoStore } from "@/components/app/demo-store";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export default function ApprovalsPage() {
-  const { approvals, workflows, setApprovalStatus } = useDemoStore();
+  const { approvals, workflows, setApprovalStatus, hydrated } = useDemoStore();
+  const [view, setView] = useState<"pending" | "reviewed">("pending");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const reduced = useReducedMotion();
   const pending = approvals.filter((approval) => approval.status === "pending");
   const reviewed = approvals.filter((approval) => approval.status !== "pending");
+  const visible = view === "pending" ? pending : reviewed;
+  const selected = visible.find((approval) => approval.id === selectedId) ?? visible[0];
   const messagesHeld = pending.reduce((total, approval) => total + approval.proposedActions.length, 0);
   const workflowTitles = new Map(workflows.map((workflow) => [workflow.id, workflow.title]));
 
+  function decide(status: "approved" | "rejected") {
+    if (!selected) return;
+    setApprovalStatus(selected.id, status);
+    setNotice(`${selected.proposedActions.length} drafts ${status}. Decision recorded; no messages sent.`);
+    setSelectedId(null);
+  }
+
   return (
-    <div className="space-y-7">
-      <PageHeader
-        eyebrow="Human oversight"
-        title="Approvals"
-        description="Inspect proposed external actions and record a decision before anything can advance."
-      />
-
-      <section className="panel flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Approval gate status">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--warning-fg)]/25 bg-[var(--warning-fg)]/[0.08]">
-            <LockKeyhole aria-hidden="true" className="size-4 text-[var(--warning-fg)]" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground">Approval gate active</p>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
-              {messagesHeld > 0
-                ? `${messagesHeld} proposed emails are held for review. Approving a batch records your decision in this local demo; no emails are sent.`
-                : "All proposed emails have been reviewed. Decisions are stored locally; no emails have been sent."}
-            </p>
-          </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader eyebrow="Human oversight" title="Approval inbox" description="The final checkpoint between agent intent and external action." actions={<span className="flex items-center gap-2 text-xs text-muted-foreground"><LockKeyhole className="size-3.5 text-[var(--success-fg)]" /> Human review required</span>} />
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-5">
+        <div className="flex items-center gap-8">
+          <div><p className="flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-tight">{pending.length}</span><span className="text-xs text-muted-foreground">batches to review</span></p></div>
+          <div className="border-l border-border pl-8"><p className="flex items-baseline gap-2"><span className="text-2xl font-semibold tabular-nums tracking-tight">{messagesHeld}</span><span className="text-xs text-muted-foreground">emails held</span></p></div>
         </div>
-        <div className="flex shrink-0 gap-6 border-t border-border pt-4 sm:border-l sm:border-t-0 sm:py-0 sm:pl-6">
-          <div>
-            <p className="font-mono text-xl font-semibold tabular-nums text-foreground">{pending.length}</p>
-            <p className="section-label mt-0.5">Pending batches</p>
-          </div>
-          <div>
-            <p className="font-mono text-xl font-semibold tabular-nums text-foreground">{messagesHeld}</p>
-            <p className="section-label mt-0.5">Messages held</p>
-          </div>
+        <p className="max-w-sm text-xs leading-5 text-muted-foreground">Inspect the recipient, message, and research.<br className="hidden sm:block" /> Decisions are saved locally in this demo.</p>
+      </div>
+      <AnimatePresence initial={false}>
+        {notice && <motion.div role="status" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: reduced ? 0 : 0.18 }} className="flex items-center gap-2 overflow-hidden text-xs text-[var(--success-fg)]"><CheckCheck className="size-4 shrink-0" />{notice}</motion.div>}
+      </AnimatePresence>
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card">
+        <div className="flex items-center gap-5 border-b border-border px-4" role="tablist" aria-label="Approval status">
+          {([['pending', 'Pending', pending.length], ['reviewed', 'Decisions', reviewed.length]] as const).map(([value, label, count]) => (
+            <button key={value} id={`approval-tab-${value}`} type="button" role="tab" aria-selected={view === value} aria-controls="approval-panel" tabIndex={view === value ? 0 : -1} onKeyDown={(event) => { if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return; event.preventDefault(); const next = event.key === "Home" ? "pending" : event.key === "End" ? "reviewed" : value === "pending" ? "reviewed" : "pending"; setView(next); setSelectedId(null); document.getElementById(`approval-tab-${next}`)?.focus(); }} onClick={() => { setView(value); setSelectedId(null); }} className={cn("interactive-tab relative flex min-h-12 items-center gap-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", view === value ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+              {label}<span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] tabular-nums">{count}</span>
+              {view === value && <motion.span layoutId="approval-inbox-tab" transition={{ type: "spring", duration: reduced ? 0 : 0.3, bounce: 0 }} className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" />}
+            </button>
+          ))}
+          <span className="ml-auto hidden text-[11px] text-muted-foreground sm:block">Email channel</span>
         </div>
-      </section>
-
-      <section aria-labelledby="pending-approvals">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="section-label">Decision queue</p>
-            <h2 id="pending-approvals" className="mt-1 text-[15px] font-semibold text-foreground">
-              Pending review <span className="ml-1 font-mono text-xs font-normal text-muted-foreground">{pending.length}</span>
-            </h2>
-          </div>
-          <span className="hidden text-xs text-muted-foreground sm:block">Review each draft before authorizing</span>
+        <div id="approval-panel" role="tabpanel" aria-labelledby={`approval-tab-${view}`}>
+          {!hydrated ? <div className="grid gap-5 p-5 md:grid-cols-[220px_1fr]"><Skeleton className="h-48" /><Skeleton className="h-96" /></div> : selected ? (
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] lg:grid-cols-[238px_minmax(0,1fr)]">
+              <aside className="min-w-0 border-b border-border bg-[var(--surface-quiet)] lg:border-b-0 lg:border-r" aria-label="Approval batches">
+                <div className="flex items-center justify-between px-4 py-3"><span className="section-label">{view === "pending" ? "Decision queue" : "Recorded decisions"}</span><Inbox className="size-3.5 text-muted-foreground" /></div>
+                <div className="flex gap-2 overflow-x-auto px-2 pb-2 lg:flex-col lg:overflow-visible">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {visible.map((approval) => <motion.button layout key={approval.id} type="button" aria-pressed={selected.id === approval.id} onClick={() => setSelectedId(approval.id)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transform: reduced ? "none" : "translateX(-4px)" }} transition={{ duration: reduced ? 0 : 0.18 }} className={cn("interactive-row min-w-60 rounded-md border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring lg:min-w-0", selected.id === approval.id ? "border-border bg-card shadow-sm" : "border-transparent hover:bg-muted")}>
+                      <span className="mb-3 flex items-center justify-between"><Mail className="size-3.5 text-muted-foreground" /><StatusBadge status={approval.status} /></span>
+                      <span className="block text-[13px] font-semibold">{approval.title}</span>
+                      <span className="mt-1 block text-[11px] leading-5 text-muted-foreground">{workflowTitles.get(approval.workflowId)}</span>
+                      <span className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>{approval.proposedActions.length} messages</span><ArrowUpRight className="size-3.5" /></span>
+                    </motion.button>)}
+                  </AnimatePresence>
+                </div>
+              </aside>
+              <ApprovalWorkspace key={selected.id} approval={selected} workflowTitle={workflowTitles.get(selected.workflowId) ?? "Workflow"} onDecision={decide} />
+            </div>
+          ) : <EmptyState icon={view === "pending" ? CheckCheck : Inbox} title={view === "pending" ? "You're all caught up" : "No decisions yet"} description={view === "pending" ? "Every proposed action has been reviewed. Your decisions are available in the Decisions tab." : "Approved and rejected proposals will appear here with their original context."} />}
         </div>
-        {pending.length ? (
-          <div className="grid gap-3">
-            {pending.map((approval) => (
-              <ApprovalCard
-                key={approval.id}
-                approval={approval}
-                workflowTitle={workflowTitles.get(approval.workflowId) ?? "Workflow"}
-                onDecision={(status) => setApprovalStatus(approval.id, status)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="panel">
-            <EmptyState
-              icon={Inbox}
-              title="Approval queue is clear"
-              description="New proposed actions will appear here after a workflow prepares them for human review."
-            />
-          </div>
-        )}
-      </section>
-
-      {reviewed.length > 0 && (
-        <section aria-labelledby="reviewed-approvals">
-          <div className="mb-3 flex items-center gap-2">
-            <ShieldCheck aria-hidden="true" className="size-4 text-muted-foreground" />
-            <h2 id="reviewed-approvals" className="text-[15px] font-semibold text-foreground">Decisions recorded</h2>
-            <span className="font-mono text-xs text-muted-foreground">{reviewed.length}</span>
-          </div>
-          <div className="grid gap-3">
-            {reviewed.map((approval) => (
-              <ApprovalCard
-                key={approval.id}
-                approval={approval}
-                workflowTitle={workflowTitles.get(approval.workflowId) ?? "Workflow"}
-                onDecision={(status) => setApprovalStatus(approval.id, status)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      </div>
     </div>
   );
 }

@@ -84,7 +84,7 @@ export default function ActivityPage() {
         description="A trace of what agents, tools and workflows have done in this workspace."
         actions={
           <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground">
-            <Activity aria-hidden="true" className="size-3.5 text-[#77d3bf]" />
+            <Activity aria-hidden="true" className="size-3.5 text-[var(--success-fg)]" />
             Demo event stream
           </span>
         }
@@ -97,7 +97,7 @@ export default function ActivityPage() {
         </div>
         <div className="flex shrink-0 items-center gap-4 font-mono tabular-nums">
           <span><strong className="font-semibold text-foreground">{activity.length}</strong> events</span>
-          <span><strong className={`font-semibold ${attentionCount ? "text-[#e48787]" : "text-foreground"}`}>{attentionCount}</strong> needs attention</span>
+          <span><strong className={`font-semibold ${attentionCount ? "text-[var(--danger-fg)]" : "text-foreground"}`}>{attentionCount}</strong> needs attention</span>
         </div>
       </div>
 

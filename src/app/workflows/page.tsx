@@ -146,7 +146,7 @@ export default function WorkflowsPage() {
                         <span className="w-7 shrink-0 font-mono text-xs tabular-nums text-foreground">{workflow.progress}%</span>
                         <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
                           <span
-                            className={`block h-full rounded-full ${workflow.status === "failed" ? "bg-[#e48787]" : workflow.status === "needs_revision" || workflow.status === "waiting_for_approval" ? "bg-[#e8b766]" : workflow.status === "completed" || workflow.status === "ready_for_execution" ? "bg-[#8bce9a]" : "bg-[#77d3bf]"}`}
+                            className={`block h-full rounded-full ${workflow.status === "failed" ? "bg-[var(--danger-fg)]" : workflow.status === "needs_revision" || workflow.status === "waiting_for_approval" ? "bg-[var(--warning-fg)]" : workflow.status === "completed" || workflow.status === "ready_for_execution" ? "bg-[var(--success-fg)]" : "bg-[var(--success-fg)]"}`}
                             style={{ width: `${workflow.progress}%` }}
                           />
                         </span>

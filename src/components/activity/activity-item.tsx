@@ -54,7 +54,7 @@ export function ActivityItem({
   return (
     <li className="group grid grid-cols-[32px_minmax(0,1fr)] gap-3 border-b border-border/80 px-4 py-4 last:border-b-0 sm:grid-cols-[34px_minmax(0,1fr)] sm:px-5">
       <span
-        className={`flex size-8 items-center justify-center rounded-md border ${error ? "border-[#e48787]/20 bg-[#e48787]/[0.07] text-[#e48787]" : "border-border bg-muted/60 text-muted-foreground"}`}
+        className={`flex size-8 items-center justify-center rounded-md border ${error ? "border-[var(--danger-fg)]/20 bg-[var(--danger-fg)]/[0.07] text-[var(--danger-fg)]" : "border-border bg-muted/60 text-muted-foreground"}`}
       >
         <Icon aria-hidden="true" className="size-3.5" />
       </span>
@@ -86,7 +86,7 @@ export function ActivityItem({
           {typeof event.durationMs === "number" && <span className="font-mono tabular-nums">{duration(event.durationMs)}</span>}
           <Link
             href={`/workflows/${event.workflowId}`}
-            className="min-w-0 max-w-full truncate text-[#a7d9ce] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="min-w-0 max-w-full truncate text-[var(--success-muted-fg)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {workflowTitle}
           </Link>

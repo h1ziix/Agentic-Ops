@@ -35,11 +35,11 @@ const statusLabels: Record<string, string> = {
 };
 
 function statusTone(status: string) {
-  if (["running", "planning", "in_research"].includes(status)) return "text-[#77d3bf] bg-[#77d3bf]/9 border-[#77d3bf]/20 before:bg-[#77d3bf]";
-  if (["waiting_for_approval", "waiting_approval", "waiting", "pending", "outreach_ready", "needs_revision"].includes(status)) return "text-[#e8b766] bg-[#e8b766]/9 border-[#e8b766]/20 before:bg-[#e8b766]";
-  if (["completed", "complete", "qualified", "approved", "executed", "responded", "researched", "ready_for_execution", "converted", "sent"].includes(status)) return "text-[#8bce9a] bg-[#8bce9a]/9 border-[#8bce9a]/20 before:bg-[#8bce9a]";
-  if (["failed", "rejected", "cancelled"].includes(status)) return "text-[#e48787] bg-[#e48787]/9 border-[#e48787]/20 before:bg-[#e48787]";
-  return "text-[#a7afb7] bg-white/[0.03] border-white/10 before:bg-[#858e98]";
+  if (["running", "planning", "in_research"].includes(status)) return "text-[var(--success-fg)] bg-[var(--success-fg)]/9 border-[var(--success-fg)]/20 before:bg-[var(--success-fg)]";
+  if (["waiting_for_approval", "waiting_approval", "waiting", "pending", "outreach_ready", "needs_revision"].includes(status)) return "text-[var(--warning-fg)] bg-[var(--warning-fg)]/9 border-[var(--warning-fg)]/20 before:bg-[var(--warning-fg)]";
+  if (["completed", "complete", "qualified", "approved", "executed", "responded", "researched", "ready_for_execution", "converted", "sent"].includes(status)) return "text-[var(--success-fg)] bg-[var(--success-fg)]/9 border-[var(--success-fg)]/20 before:bg-[var(--success-fg)]";
+  if (["failed", "rejected", "cancelled"].includes(status)) return "text-[var(--danger-fg)] bg-[var(--danger-fg)]/9 border-[var(--danger-fg)]/20 before:bg-[var(--danger-fg)]";
+  return "text-[var(--text-muted-strong)] bg-muted/50 border-border before:bg-[var(--icon-muted)]";
 }
 
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {

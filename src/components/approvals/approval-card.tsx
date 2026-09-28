@@ -160,14 +160,14 @@ export function ApprovalCard({
             <p className="mt-1 text-xs leading-5 text-muted-foreground">{approval.description}</p>
             <Link
               href={`/workflows/${approval.workflowId}`}
-              className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-xs text-[#a7d9ce] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              className="mt-2 inline-flex max-w-full items-center gap-1 truncate text-xs text-[var(--success-muted-fg)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <span className="truncate">{workflowTitle}</span>
               <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
             </Link>
           </div>
         </div>
-        <div className="flex shrink-0 items-start gap-1.5 self-start rounded-md border border-[#e8b766]/20 bg-[#e8b766]/[0.06] px-2.5 py-1.5 text-[11px] text-[#e8b766]">
+        <div className="flex shrink-0 items-start gap-1.5 self-start rounded-md border border-[var(--warning-fg)]/20 bg-[var(--warning-fg)]/[0.06] px-2.5 py-1.5 text-[11px] text-[var(--warning-fg)]">
           <ShieldAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
           External communication
         </div>

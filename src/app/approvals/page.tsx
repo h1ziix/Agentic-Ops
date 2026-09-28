@@ -23,8 +23,8 @@ export default function ApprovalsPage() {
 
       <section className="panel flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between" aria-label="Approval gate status">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[#e8b766]/25 bg-[#e8b766]/[0.08]">
-            <LockKeyhole aria-hidden="true" className="size-4 text-[#e8b766]" />
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-[var(--warning-fg)]/25 bg-[var(--warning-fg)]/[0.08]">
+            <LockKeyhole aria-hidden="true" className="size-4 text-[var(--warning-fg)]" />
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Approval gate active</p>

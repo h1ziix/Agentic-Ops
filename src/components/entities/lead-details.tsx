@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/app/status-badge";
 import { useApprovalDrafts } from "@/components/approvals/use-approval-drafts";
 import { CompanyMark, DemoSourceNote, EntitySection, ScoreRail } from "@/components/entities/entity-ui";
-import { companyById, entityDate, outreachLabel, useProspectData } from "@/components/entities/prospect-data";
+import { entityDate, outreachLabel, useProspectData } from "@/components/entities/prospect-data";
 import type { Lead } from "@/types/domain";
 
 export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [open, setOpen] = useState(true);
   const { drafts } = useApprovalDrafts();
-  const { workflows, approvals, activity } = useProspectData();
+  const { workflows, approvals, activity, companyById } = useProspectData();
   if (!lead) return null;
   const company = companyById.get(lead.companyId);
   const workflow = workflows.find((item) => item.id === lead.workflowId);
@@ -33,7 +33,7 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
       </SheetHeader>
       <div className="flex flex-col gap-7 px-6 py-6">
         <div className="rounded-lg border border-border bg-muted/25 p-5">
-          <div className="flex items-start justify-between gap-3"><div><p className="mb-3 text-xs font-medium text-muted-foreground">Opportunity fit</p><ScoreRail score={lead.score} detailed /></div><span className="inline-flex items-center gap-1.5 text-[11px] capitalize text-muted-foreground"><ShieldCheck className="size-3.5" />{lead.confidence} confidence</span></div>
+          <div className="flex items-start justify-between gap-3"><div><p className="mb-3 text-xs font-medium text-muted-foreground">Opportunity fit</p><ScoreRail score={lead.score} detailed /></div><span className="inline-flex items-center gap-1.5 text-[11px] capitalize text-muted-foreground"><ShieldCheck className="size-3.5" />{lead.confidence ? `${lead.confidence} confidence` : "Not assessed"}</span></div>
           <p className="mt-5 text-sm font-medium leading-5">{lead.opportunity}</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">{lead.scoreReason}</p>
         </div>
@@ -44,7 +44,7 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
           <div className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">Message status</span><StatusBadge status={lead.outreachStatus} label={outreachLabel(lead.outreachStatus)} /></div>
           {proposal && message ? <div className="overflow-hidden rounded-md border border-border"><div className="flex flex-col gap-1 border-b border-border bg-muted/30 px-4 py-3"><p className="text-[11px] text-muted-foreground">To: {proposal.recipientName}</p><p className="text-xs font-medium">{message.subject}</p></div><p className="whitespace-pre-line px-4 py-3 text-xs leading-5 text-muted-foreground">{message.body.split("\n\n").slice(0, 3).join("\n\n")}</p></div> : <p className="text-xs leading-5 text-muted-foreground">{lead.outreachStatus === "sent" ? "Outreach was sent in the seeded demo history. No external messages are sent by this workspace." : "Research is available. Outreach has not been drafted for this opportunity."}</p>}
           {approval && <Button variant={approval.status === "pending" ? "default" : "outline"} className="self-start" nativeButton={false} render={<Link href="/approvals" />}><ShieldCheck data-icon="inline-start" />{approval.status === "pending" ? "Review outreach" : "View approval decision"}<ArrowRight data-icon="inline-end" /></Button>}
-          {approval?.status === "approved" && <p className="text-[11px] leading-5 text-muted-foreground">Approved in this demo. Execution is unavailable; no email was sent.</p>}
+          {approval?.status === "approved" && <p className="text-[11px] leading-5 text-muted-foreground">Approval recorded. Execution is unavailable; no email was sent.</p>}
         </EntitySection>
         {events.length > 0 && <EntitySection title="Recent agent activity" icon={<FileText className="size-4 text-muted-foreground" />}><ol className="flex flex-col gap-3 border-l border-border pl-4">{events.map((event) => <li key={event.id}><p className="text-xs leading-5">{event.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{event.agent ?? "Workflow"} · {entityDate.format(new Date(event.timestamp))}</p></li>)}</ol></EntitySection>}
         <EntitySection title="Connected records" icon={<GitBranch className="size-4 text-muted-foreground" />}>

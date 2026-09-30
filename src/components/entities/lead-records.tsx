@@ -4,16 +4,17 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { CompanyMark, RecordChevron, ScoreRail } from "@/components/entities/entity-ui";
-import { companyById, entityDate, outreachLabel } from "@/components/entities/prospect-data";
+import { entityDate, outreachLabel } from "@/components/entities/prospect-data";
 import { cn } from "@/lib/utils";
-import type { Lead, Workflow } from "@/types/domain";
+import type { Company, Lead, Workflow } from "@/types/domain";
 
 type LeadRecordsProps = {
-  leads: Lead[]; workflows: Workflow[]; selection: Set<string>;
+  leads: Lead[]; workflows: Workflow[]; companies: Company[]; selection: Set<string>;
   onOpen: (id: string) => void; onSelect: (id: string) => void; onSelectAll: () => void;
 };
 
-export function LeadRecords({ leads, workflows, selection, onOpen, onSelect, onSelectAll }: LeadRecordsProps) {
+export function LeadRecords({ leads, workflows, companies, selection, onOpen, onSelect, onSelectAll }: LeadRecordsProps) {
+  const companyById = new Map(companies.map((company) => [company.id, company]));
   const allSelected = leads.length > 0 && leads.every((lead) => selection.has(lead.id));
   const someSelected = leads.some((lead) => selection.has(lead.id));
   return <>
@@ -44,7 +45,7 @@ export function LeadRecords({ leads, workflows, selection, onOpen, onSelect, onS
       return <div key={lead.id} className={cn("flex items-start gap-3 p-4", selection.has(lead.id) && "bg-muted/50")}>
         <input id={`mobile-select-${lead.id}`} type="checkbox" aria-label={`Select ${company?.name}`} checked={selection.has(lead.id)} onChange={() => onSelect(lead.id)} className="mt-2 size-4 shrink-0 accent-primary" />
         <button onClick={() => onOpen(lead.id)} className="interactive-row flex min-w-0 flex-1 flex-col gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="flex w-full items-center gap-2.5"><CompanyMark name={company?.name ?? "Company"} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{company?.name}</span><span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{company?.industry}</span></span><span className="font-mono text-sm font-medium">{lead.score}</span><ArrowUpRight className="size-3.5 text-muted-foreground" /></span>
+          <span className="flex w-full items-center gap-2.5"><CompanyMark name={company?.name ?? "Company"} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{company?.name}</span><span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{company?.industry}</span></span><span className="font-mono text-sm font-medium">{lead.score ?? "—"}</span><ArrowUpRight className="size-3.5 text-muted-foreground" /></span>
           <span className="text-xs leading-5 text-muted-foreground">{lead.opportunity}</span><span className="flex flex-wrap items-center gap-2"><StatusBadge status={lead.status} /><span className="text-[11px] text-muted-foreground">{outreachLabel(lead.outreachStatus)}</span></span>
         </button>
       </div>;

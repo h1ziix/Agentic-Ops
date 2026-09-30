@@ -1,9 +1,10 @@
-/** Stage 1 domain contracts. IDs and timestamps are deliberately serializable. */
+/** Serializable presentation contracts backed by workspace records. */
 export type WorkflowStatus =
   | "draft"
   | "planning"
   | "running"
   | "waiting_for_approval"
+  | "paused"
   | "ready_for_execution"
   | "needs_revision"
   | "completed"
@@ -11,19 +12,21 @@ export type WorkflowStatus =
   | "cancelled";
 
 export type StepStatus = "completed" | "running" | "waiting" | "failed";
-export type TaskStatus = "completed" | "running" | "pending" | "failed";
+export type TaskStatus = "completed" | "running" | "pending" | "blocked" | "failed" | "cancelled";
 export type AgentName =
   | "Planner Agent"
   | "Research Agent"
   | "Reviewer Agent"
-  | "Executor Agent";
+  | "Executor Agent"
+  | "Unassigned"
+  | "Workspace";
 
 export interface Workspace {
   id: string;
   name: string;
   initials: string;
   plan: string;
-  mode: "demo";
+  mode: "demo" | "live";
 }
 
 export interface Workflow {
@@ -44,6 +47,22 @@ export interface Workflow {
   errorSummary?: string;
 }
 
+export interface PlannerRun {
+  id: string;
+  workflowId: string;
+  status: import("@/lib/validation/agent").AgentStatus;
+  model: string | null;
+  summary?: string;
+  assumptions: string[];
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
+  retryCount: number;
+  taskCount: number;
+  totalTokens: number | null;
+  error?: string;
+}
+
 export interface WorkflowStage {
   id: string;
   workflowId: string;
@@ -62,6 +81,10 @@ export interface WorkflowTask {
   status: TaskStatus;
   agent: AgentName;
   completedAt?: string;
+  planTaskId?: string;
+  objective?: string;
+  dependencies?: string[];
+  expectedOutput?: string;
 }
 
 export type CompanyResearchStatus =
@@ -72,9 +95,9 @@ export type CompanyResearchStatus =
 
 export interface Company {
   id: string;
-  workflowId: string;
+  workflowId: string | null;
   name: string;
-  website: string;
+  website: string | null;
   industry: string;
   location: string;
   description: string;
@@ -111,10 +134,10 @@ export interface Lead {
   companyId: string;
   workflowId: string;
   status: LeadStatus;
-  score: number;
+  score: number | null;
   scoreReason: string;
   opportunity: string;
-  confidence: "high" | "medium" | "low";
+  confidence: "high" | "medium" | "low" | null;
   outreachStatus: OutreachStatus;
   updatedAt: string;
 }
@@ -130,13 +153,15 @@ export type ProposedActionStatus =
   | "waiting_for_approval"
   | "approved"
   | "rejected"
-  | "executed";
+  | "executed"
+  | "cancelled"
+  | "failed";
 
 export interface ProposedAction {
   id: string;
   leadId: string;
   companyId: string;
-  actionType: "send_email";
+  actionType: string;
   recipientName: string;
   recipientEmail: string;
   subject: string;
@@ -149,7 +174,7 @@ export interface Approval {
   workflowId: string;
   title: string;
   description: string;
-  actionType: "send_email";
+  actionType: string;
   status: ApprovalStatus;
   requestedBy: AgentName;
   requestedAt: string;
@@ -165,20 +190,7 @@ export type ActivityCategory =
   | "approval"
   | "error";
 
-export type AgentEventType =
-  | "agent_started"
-  | "reasoning_summary"
-  | "tool_called"
-  | "tool_completed"
-  | "task_started"
-  | "task_completed"
-  | "lead_qualified"
-  | "approval_requested"
-  | "approval_received"
-  | "workflow_completed"
-  | "error"
-  | "retry"
-  | "agent_completed";
+export type AgentEventType = import("@/types/persistence").AgentEventType | "lead_qualified" | "approval_received";
 
 export interface AgentEvent {
   id: string;
@@ -207,4 +219,16 @@ export interface DashboardMetrics {
   agentRunsThisWeek: number;
   averageRunDuration: string;
   successfulRuns: number;
+}
+
+export interface WorkspaceViewData {
+  workspace: Workspace;
+  workflows: Workflow[];
+  workflowStages: WorkflowStage[];
+  workflowTasks: WorkflowTask[];
+  companies: Company[];
+  leads: Lead[];
+  approvals: Approval[];
+  activity: AgentEvent[];
+  plannerRuns?: PlannerRun[];
 }

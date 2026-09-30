@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
-import { approvals, companies, leads } from "@/lib/mock-data";
+import { useDemoStore } from "@/components/app/demo-store";
 import { cn } from "@/lib/utils";
 
 type DashboardMetricsProps = {
@@ -15,9 +15,10 @@ type DashboardMetricsProps = {
 };
 
 export function DashboardMetrics({ activeCount, executingCount, waitingCount, pendingCount }: DashboardMetricsProps) {
+  const { approvals, companies, leads } = useDemoStore();
   const reduced = useReducedMotion();
   const researchedCount = companies.filter((company) => company.researchStatus === "researched").length;
-  const highFitCount = leads.filter((lead) => lead.score >= 80).length;
+  const highFitCount = leads.filter((lead) => lead.score !== null && lead.score >= 80).length;
   const metrics = [
     { label: "Active workflows", value: activeCount, note: `${executingCount} in progress · ${waitingCount} in review`, href: "/workflows", bars: [executingCount, waitingCount, Math.max(0, activeCount - executingCount - waitingCount)] },
     { label: "Companies researched", value: researchedCount, note: `of ${companies.length} company profiles`, href: "/companies", bars: [researchedCount, companies.length - researchedCount] },

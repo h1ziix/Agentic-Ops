@@ -10,3 +10,5 @@ next-env.d.ts
 .playwright-cli/
 output/playwright/
 output/*.log
+supabase/.temp/
+supabase/.branches/

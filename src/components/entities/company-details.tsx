@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/app/status-badge";
 import { CompanyMark, DemoSourceNote, EntitySection, ScoreRail } from "@/components/entities/entity-ui";
 import { entityDate, useProspectData } from "@/components/entities/prospect-data";
+import { websiteHostname } from "@/lib/format";
 import type { Company } from "@/types/domain";
 
 export function CompanyDetails({ company, onClose }: { company: Company | null; onClose: () => void }) {
@@ -23,7 +24,7 @@ export function CompanyDetails({ company, onClose }: { company: Company | null; 
     <SheetContent initialFocus={titleRef} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
       <SheetHeader className="gap-0 border-b border-border px-6 pb-5 pt-7">
         <p className="section-label mb-5">Research / Company profile</p>
-        <div className="flex items-center gap-3.5"><CompanyMark name={company.name} large /><div className="min-w-0"><SheetTitle ref={titleRef} tabIndex={-1} className="text-xl tracking-tight outline-none">{company.name}</SheetTitle><SheetDescription className="mt-1">{new URL(company.website).hostname}</SheetDescription></div></div>
+        <div className="flex items-center gap-3.5"><CompanyMark name={company.name} large /><div className="min-w-0"><SheetTitle ref={titleRef} tabIndex={-1} className="text-xl tracking-tight outline-none">{company.name}</SheetTitle><SheetDescription className="mt-1">{websiteHostname(company.website)}</SheetDescription></div></div>
         <div className="mt-4 flex flex-wrap items-center gap-2"><StatusBadge status={company.researchStatus === "researching" ? "in_research" : company.researchStatus} /><span className="text-[11px] text-muted-foreground">{company.location}</span></div>
       </SheetHeader>
       <div className="flex flex-col gap-7 px-6 py-6">
@@ -40,7 +41,7 @@ export function CompanyDetails({ company, onClose }: { company: Company | null; 
           <ul className="flex flex-col divide-y divide-border rounded-md border border-border">{company.sourceUrls.map((source, index) => <li key={source} className="flex items-center gap-3 px-3 py-3"><span className="flex size-7 shrink-0 items-center justify-center rounded bg-muted font-mono text-[11px] text-muted-foreground">0{index + 1}</span><div className="min-w-0"><p className="text-xs font-medium">{index === 0 ? "Company website" : "Company overview"}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{new URL(source).hostname}{new URL(source).pathname === "/" ? "" : new URL(source).pathname}</p></div><span className="ml-auto text-[10px] text-muted-foreground">Demo source</span></li>)}</ul>
         </EntitySection>
         {events.length > 0 && <EntitySection title="Research activity" icon={<Check className="size-4 text-muted-foreground" />}><ol className="flex flex-col gap-3 border-l border-border pl-4">{events.map((event) => <li key={event.id}><p className="text-xs leading-5">{event.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{event.agent ?? "Workflow"} · {entityDate.format(new Date(event.timestamp))}</p></li>)}</ol></EntitySection>}
-        <EntitySection title="Source workflow" icon={<GitBranch className="size-4 text-muted-foreground" />}><Link href={`/workflows/${company.workflowId}`} className="interactive-row group flex items-center justify-between gap-3 rounded-md border border-border p-3 text-xs leading-5 transition-colors hover:bg-muted/50">{workflow?.title ?? "View workflow"}<ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link></EntitySection>
+        {company.workflowId && <EntitySection title="Source workflow" icon={<GitBranch className="size-4 text-muted-foreground" />}><Link href={`/workflows/${company.workflowId}`} className="interactive-row group flex items-center justify-between gap-3 rounded-md border border-border p-3 text-xs leading-5 transition-colors hover:bg-muted/50">{workflow?.title ?? "View workflow"}<ArrowRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" /></Link></EntitySection>}
         <DemoSourceNote />
       </div>
     </SheetContent>

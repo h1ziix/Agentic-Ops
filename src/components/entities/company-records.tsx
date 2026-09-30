@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { CompanyMark, RecordChevron, ScoreRail } from "@/components/entities/entity-ui";
 import { entityDate } from "@/components/entities/prospect-data";
+import { websiteHostname } from "@/lib/format";
 import type { Company } from "@/types/domain";
 
 export function CompanyRecords({ companies, onOpen }: { companies: Company[]; onOpen: (id: string) => void }) {
@@ -14,7 +15,7 @@ export function CompanyRecords({ companies, onOpen }: { companies: Company[]; on
       <tbody className="divide-y divide-border">{companies.map((company) => <tr key={company.id} onClick={(event) => { if (!(event.target as HTMLElement).closest("button,a")) onOpen(company.id); }} className="interactive-row group cursor-pointer transition-colors hover:bg-muted/35">
         <td className="px-4 py-3.5"><button onClick={() => onOpen(company.id)} className="flex max-w-full items-center gap-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"><CompanyMark name={company.name} /><span className="min-w-0"><span className="block truncate font-medium">{company.name}</span><span className="mt-1 block truncate text-[11px] text-muted-foreground">{company.industry}</span></span></button></td>
         <td className="px-4 py-3.5"><p className="truncate" title={company.location}>{company.location.split(",")[0]}</p><p className="mt-1 text-[11px] text-muted-foreground">{company.employeeEstimate} employees</p></td>
-        <td className="px-4 py-3.5"><p className="truncate text-foreground/85" title={company.opportunity}>{company.opportunity}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{new URL(company.website).hostname}</p></td>
+        <td className="px-4 py-3.5"><p className="truncate text-foreground/85" title={company.opportunity}>{company.opportunity}</p><p className="mt-1 truncate text-[11px] text-muted-foreground">{websiteHostname(company.website)}</p></td>
         <td className="px-4 py-3.5"><ScoreRail score={company.score} /></td>
         <td className="px-4 py-3.5"><StatusBadge status={company.researchStatus === "researching" ? "in_research" : company.researchStatus} /><p className="mt-1 text-[10px] text-muted-foreground">{company.lastResearchedAt ? entityDate.format(new Date(company.lastResearchedAt)) : "Research in progress"}</p></td>
         <td className="pr-3"><RecordChevron /></td>

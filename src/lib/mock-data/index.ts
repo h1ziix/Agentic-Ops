@@ -332,7 +332,7 @@ export const leads: Lead[] = companies
     return {
       id: `lead-${company.id}`,
       companyId: company.id,
-      workflowId: company.workflowId,
+      workflowId: company.workflowId ?? "",
       ...state,
       score: company.score,
       scoreReason: `${company.description} Identified opportunity: ${company.opportunity}. This gives the team a specific starting point for discovery.`,

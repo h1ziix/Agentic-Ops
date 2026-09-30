@@ -1,19 +1,21 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
-import { agentActivity, approvals as seedApprovals, workflowStages as seedStages, workflowTasks as seedTasks, workflows as seedWorkflows } from "@/lib/mock-data";
-import type { AgentEvent, Approval, ApprovalStatus, Workflow, WorkflowStage, WorkflowTask } from "@/types/domain";
+import { createWorkflowAction } from "@/app/actions/workflows";
+import { resolveApprovalAction } from "@/app/actions/approvals";
+import type { ActionContentEdit } from "@/lib/validation/approval";
+import { newWorkflowSchema, type NewWorkflowInput } from "@/lib/validation/workflow";
+import { agentActivity, approvals as seedApprovals, companies as seedCompanies, demoWorkspace, leads as seedLeads, workflowStages as seedStages, workflowTasks as seedTasks, workflows as seedWorkflows } from "@/lib/mock-data";
+import type { AgentEvent, Approval, ApprovalStatus, Company, Lead, PlannerRun, Workflow, WorkflowStage, WorkflowTask, Workspace, WorkspaceViewData } from "@/types/domain";
+
+export { newWorkflowSchema } from "@/lib/validation/workflow";
 
 const storageKey = "agentic-ops-demo-v1";
-export const newWorkflowSchema = z.object({
-  goal: z.string().trim().min(24, "Describe the outcome in at least 24 characters.").max(1000, "Keep the goal under 1,000 characters."),
-  targetCompanies: z.number().int().min(5).max(100),
-});
-export type NewWorkflowInput = z.infer<typeof newWorkflowSchema>;
 
 const storedWorkflowSchema = z.object({
-  id: z.string(), title: z.string(), goal: z.string(), status: z.enum(["draft", "planning", "running", "waiting_for_approval", "ready_for_execution", "needs_revision", "completed", "failed", "cancelled"]),
+  id: z.string(), title: z.string(), goal: z.string(), status: z.enum(["draft", "planning", "running", "waiting_for_approval", "paused", "ready_for_execution", "needs_revision", "completed", "failed", "cancelled"]),
   progress: z.number(), currentStep: z.string(), targetCompanies: z.number(), companyCount: z.number(), qualifiedLeadCount: z.number(), pendingApprovalCount: z.number(),
   createdAt: z.string(), updatedAt: z.string(), startedAt: z.string().optional(), completedAt: z.string().optional(), errorSummary: z.string().optional(),
 });
@@ -24,15 +26,21 @@ const storageSchema = z.object({
 type ApprovalDecision = { status: "approved" | "rejected"; decidedAt: string };
 
 type DemoStore = {
+  workspace: Workspace;
+  mode: "demo" | "live";
   hydrated: boolean;
   storageAvailable: boolean;
   workflows: Workflow[];
   workflowStages: WorkflowStage[];
   workflowTasks: WorkflowTask[];
+  companies: Company[];
+  leads: Lead[];
   approvals: Approval[];
   activity: AgentEvent[];
-  createWorkflow: (input: NewWorkflowInput) => string;
-  setApprovalStatus: (id: string, status: "approved" | "rejected") => void;
+  plannerRuns: PlannerRun[];
+  updateWorkflow: (view: WorkspaceViewData) => void;
+  createWorkflow: (input: NewWorkflowInput) => Promise<string>;
+  setApprovalStatus: (id: string, status: "approved" | "rejected", edits?: ActionContentEdit[]) => Promise<void>;
 };
 
 const DemoStoreContext = createContext<DemoStore | null>(null);
@@ -54,14 +62,17 @@ const taskTemplates = [
   ["Request human approval", "Executor Agent"],
 ] as const;
 
-export function DemoStoreProvider({ children }: { children: ReactNode }) {
+export function DemoStoreProvider({ children, initialData }: { children: ReactNode; initialData?: WorkspaceViewData }) {
+  const router = useRouter();
   const [createdWorkflows, setCreatedWorkflows] = useState<Workflow[]>([]);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalDecision>>({});
   const [hydrated, setHydrated] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
+  const [workflowUpdates, setWorkflowUpdates] = useState<Record<string, WorkspaceViewData>>({});
 
   /* eslint-disable react-hooks/set-state-in-effect -- Rehydrate the browser-only demo workspace after server rendering. */
   useEffect(() => {
+    if (initialData) return;
     try {
       const raw = window.localStorage.getItem(storageKey);
       if (raw) {
@@ -73,20 +84,52 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       }
     } catch { setStorageAvailable(false); }
     setHydrated(true);
-  }, []);
+  }, [initialData]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /* eslint-disable react-hooks/set-state-in-effect -- Reflect unavailable browser storage without crashing the workspace. */
   useEffect(() => {
+    if (initialData) return;
     if (!hydrated) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify({ createdWorkflows, approvalDecisions }));
       setStorageAvailable(true);
     } catch { setStorageAvailable(false); }
-  }, [createdWorkflows, approvalDecisions, hydrated]);
+  }, [createdWorkflows, approvalDecisions, hydrated, initialData]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const value = useMemo<DemoStore>(() => {
+    if (initialData) {
+      // Poll responses update just one workflow; a newer RSC snapshot wins after navigation.
+      const updates = Object.values(workflowUpdates).filter((view) => {
+        const updated = view.workflows[0];
+        const server = initialData.workflows.find((workflow) => workflow.id === updated?.id);
+        return updated && (!server || updated.updatedAt >= server.updatedAt);
+      });
+      const ids = new Set(updates.flatMap((view) => view.workflows.map((workflow) => workflow.id)));
+      return {
+      ...initialData,
+      workflows: [...updates.flatMap((view) => view.workflows), ...initialData.workflows.filter((row) => !ids.has(row.id))],
+      workflowTasks: [...updates.flatMap((view) => view.workflowTasks), ...initialData.workflowTasks.filter((row) => !ids.has(row.workflowId))],
+      workflowStages: [...updates.flatMap((view) => view.workflowStages), ...initialData.workflowStages.filter((row) => !ids.has(row.workflowId))],
+      activity: [...updates.flatMap((view) => view.activity), ...initialData.activity.filter((row) => !ids.has(row.workflowId))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+      plannerRuns: [...updates.flatMap((view) => view.plannerRuns ?? []), ...(initialData.plannerRuns ?? []).filter((row) => !ids.has(row.workflowId))],
+      updateWorkflow: (view) => setWorkflowUpdates((current) => ({ ...current, [view.workflows[0].id]: view })),
+      mode: "live",
+      hydrated: true,
+      storageAvailable: true,
+      createWorkflow: async (input) => {
+        const result = await createWorkflowAction(input);
+        if (!result.id) throw new Error(result.error);
+        router.refresh();
+        return result.id;
+      },
+      setApprovalStatus: async (id, status, edits = []) => {
+        const result = await resolveApprovalAction(id, status, edits);
+        if (!result.ok) throw new Error(result.error);
+        router.refresh();
+      },
+    }; }
     const resolvedWorkflows = seedWorkflows.map((workflow): Workflow => {
       const workflowApprovals = seedApprovals.filter((approval) => approval.workflowId === workflow.id);
       if (workflow.status !== "waiting_for_approval" || !workflowApprovals.length || workflowApprovals.some((approval) => !approvalDecisions[approval.id])) return workflow;
@@ -115,8 +158,8 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       agent, status: index === 0 ? "running" : "pending",
     })));
     const createdEvents: AgentEvent[] = createdWorkflows.map((workflow) => ({
-      id: `${workflow.id}-created`, workflowId: workflow.id, category: "workflow", eventType: "task_started", agent: "Planner Agent",
-      title: "Workflow created", description: "Demo plan prepared from the goal. No AI or external tools were called.", timestamp: workflow.createdAt, status: "running",
+      id: `${workflow.id}-created`, workflowId: workflow.id, category: "workflow", eventType: "workflow_created", agent: "Workspace",
+      title: "Workflow created", description: "Demo plan prepared from the goal. No AI or external tools were called.", timestamp: workflow.createdAt, status: "completed",
     }));
     const decisionEvents: AgentEvent[] = Object.entries(approvalDecisions).flatMap(([id, decision]) => {
       const approval = seedApprovals.find((item) => item.id === id);
@@ -131,15 +174,28 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
       if (!decision) return approval;
       return { ...approval, status: decision.status as ApprovalStatus, proposedActions: approval.proposedActions.map((action) => ({ ...action, status: decision.status })) };
     });
+    const leads: Lead[] = seedLeads.map((lead) => {
+      const approval = approvals.find((item) => item.proposedActions.some((action) => action.leadId === lead.id));
+      if (approval?.status === "approved") return { ...lead, status: "outreach_ready", outreachStatus: "approved" };
+      if (approval?.status === "rejected") return { ...lead, status: "qualified", outreachStatus: "drafted" };
+      if (approval?.status === "executed") return { ...lead, status: "contacted", outreachStatus: "sent" };
+      return lead;
+    });
     return {
+      workspace: demoWorkspace,
+      mode: "demo",
       hydrated,
       storageAvailable,
       workflows: [...createdWorkflows, ...resolvedWorkflows],
       workflowStages: [...createdStages, ...resolvedStages],
       workflowTasks: [...createdTasks, ...resolvedTasks],
+      companies: seedCompanies,
+      leads,
       approvals,
       activity: [...createdEvents, ...decisionEvents, ...agentActivity].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
-      createWorkflow: (input) => {
+      plannerRuns: [],
+      updateWorkflow: () => {},
+      createWorkflow: async (input) => {
         const valid = newWorkflowSchema.parse(input);
         const now = new Date().toISOString();
         const id = `demo-${crypto.randomUUID()}`;
@@ -149,12 +205,12 @@ export function DemoStoreProvider({ children }: { children: ReactNode }) {
         setCreatedWorkflows((current) => [workflow, ...current]);
         return id;
       },
-      setApprovalStatus: (id, status) => {
+      setApprovalStatus: async (id, status) => {
         if (!seedApprovals.some((approval) => approval.id === id)) return;
         setApprovalDecisions((current) => current[id] ? current : { ...current, [id]: { status, decidedAt: new Date().toISOString() } });
       },
     };
-  }, [createdWorkflows, approvalDecisions, hydrated, storageAvailable]);
+  }, [createdWorkflows, approvalDecisions, hydrated, storageAvailable, initialData, router, workflowUpdates]);
 
   return <DemoStoreContext.Provider value={value}>{children}</DemoStoreContext.Provider>;
 }

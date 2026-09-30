@@ -4,8 +4,6 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AppShell } from "@/components/app/app-shell";
-import { DemoStoreProvider } from "@/components/app/demo-store";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -25,11 +23,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <body>
         <Script id="theme-bootstrap" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
-        <TooltipProvider>
-          <DemoStoreProvider>
-            <AppShell>{children}</AppShell>
-          </DemoStoreProvider>
-        </TooltipProvider>
+        <TooltipProvider>{children}</TooltipProvider>
       </body>
     </html>
   );

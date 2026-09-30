@@ -12,23 +12,28 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/app/status-badge";
 import { ApprovalResearch } from "@/components/approvals/approval-research";
+import { useDemoStore } from "@/components/app/demo-store";
 import { approvalDraftSchema, useApprovalDrafts, type ApprovalDraft } from "@/components/approvals/use-approval-drafts";
+import type { ActionContentEdit } from "@/lib/validation/approval";
 import { formatDateTime } from "@/lib/format";
 import type { Approval } from "@/types/domain";
 
-export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { approval: Approval; workflowTitle: string; onDecision: (status: "approved" | "rejected") => void }) {
+export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { approval: Approval; workflowTitle: string; onDecision: (status: "approved" | "rejected", edits: ActionContentEdit[]) => Promise<void> }) {
+  const { mode } = useDemoStore();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [editing, setEditing] = useState(false);
   const [edit, setEdit] = useState<ApprovalDraft>({ subject: "", body: "" });
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
+  const [decisionPending, setDecisionPending] = useState(false);
+  const [decisionError, setDecisionError] = useState("");
   const [viewed, setViewed] = useState<Set<number>>(new Set([0]));
   const { drafts, saveDraft, storageAvailable } = useApprovalDrafts();
   const reduced = useReducedMotion();
   const action = approval.proposedActions[selectedIndex];
   const pending = approval.status === "pending";
-  const message = action ? drafts[action.id] ?? action : null;
+  const message = action ? (pending || mode === "demo" ? drafts[action.id] ?? action : action) : null;
 
   function select(index: number) {
     setSelectedIndex(index);
@@ -46,6 +51,23 @@ export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { app
     setEditing(false);
     setSaved(true);
     setError("");
+  }
+
+  async function confirmDecision() {
+    if (!decision || decisionPending) return;
+    setDecisionPending(true);
+    setDecisionError("");
+    try {
+      const edits = approval.proposedActions.flatMap((item) => drafts[item.id]
+        ? [{ actionId: item.id, subject: drafts[item.id].subject, body: drafts[item.id].body }]
+        : []);
+      await onDecision(decision, edits);
+      setDecision(null);
+    } catch (error) {
+      setDecisionError(error instanceof Error ? error.message : "The decision could not be saved.");
+    } finally {
+      setDecisionPending(false);
+    }
   }
 
   return (
@@ -75,11 +97,11 @@ export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { app
                 <Field.Root invalid={Boolean(error)} className="flex flex-col gap-2"><Field.Label htmlFor="approval-subject" className="text-xs font-medium">Subject</Field.Label><Input id="approval-subject" value={edit.subject} onChange={(event) => { setEdit({ ...edit, subject: event.target.value }); setError(""); }} maxLength={200} aria-invalid={Boolean(error)} /></Field.Root>
                 <Field.Root invalid={Boolean(error)} className="flex flex-col gap-2"><Field.Label htmlFor="approval-body" className="text-xs font-medium">Message</Field.Label><Textarea id="approval-body" value={edit.body} onChange={(event) => { setEdit({ ...edit, body: event.target.value }); setError(""); }} rows={13} maxLength={10000} className="min-h-64" aria-invalid={Boolean(error)} /></Field.Root>
                 {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground">Edits stay in this browser.</span><div className="flex gap-2"><Button variant="ghost" size="sm" onClick={() => { setEditing(false); setError(""); }}>Cancel</Button><Button size="sm" onClick={save}><Save data-icon="inline-start" /> Save draft</Button></div></div>
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[11px] text-muted-foreground">{mode === "live" ? "Edits are saved to the workspace with your decision." : "Edits stay in this browser."}</span><div className="flex gap-2"><Button variant="ghost" size="sm" onClick={() => { setEditing(false); setError(""); }}>Cancel</Button><Button size="sm" onClick={save}><Save data-icon="inline-start" /> Save draft</Button></div></div>
               </motion.div> : <motion.div key={action.id} initial={{ opacity: 0, transform: reduced ? "none" : "translateY(4px)" }} animate={{ opacity: 1, transform: "none" }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : 0.18 }}>
                 <h3 className="mb-5 text-[13px] font-semibold leading-6">{message.subject}</h3>
                 <div className="whitespace-pre-wrap break-words text-[13px] leading-7 text-[var(--text-secondary)]">{message.body}</div>
-                <p className="mt-6 flex items-center gap-1.5 text-[11px] text-muted-foreground" role={saved ? "status" : undefined}>{saved ? <><CircleCheck className="size-3.5 text-[var(--success-fg)]" />{storageAvailable ? "Draft saved in this browser" : "Saved until this batch closes; browser storage is unavailable"}</> : drafts[action.id] ? "Edited locally · demo draft" : "Agent-generated draft · demo content"}</p>
+                <p className="mt-6 flex items-center gap-1.5 text-[11px] text-muted-foreground" role={saved ? "status" : undefined}>{saved ? <><CircleCheck className="size-3.5 text-[var(--success-fg)]" />{storageAvailable ? "Draft held in this browser until your decision" : "Saved until this batch closes; browser storage is unavailable"}</> : !pending && mode === "live" ? "Decision recorded · saved proposal" : drafts[action.id] ? "Edited locally · browser draft" : "Proposed draft · review before approval"}</p>
               </motion.div>}
             </AnimatePresence>
           </div>
@@ -88,15 +110,16 @@ export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { app
       </> : <div className="p-6 text-sm text-muted-foreground">There are no proposed messages in this batch.</div>}
 
       <footer className="mt-auto flex flex-wrap items-center justify-between gap-4 border-t border-border bg-[var(--surface-quiet)] p-4 sm:px-6">
-        <div><p className="flex items-center gap-1.5 text-xs font-medium"><LockKeyhole className="size-3.5 text-[var(--warning-fg)]" />{pending ? "Held at the approval gate" : "Decision saved locally"}</p><p className="mt-1 text-[11px] text-muted-foreground">{pending ? `${viewed.size} of ${approval.proposedActions.length} drafts opened · sending is disabled` : "No emails were sent."}</p></div>
+        <div><p className="flex items-center gap-1.5 text-xs font-medium"><LockKeyhole className="size-3.5 text-[var(--warning-fg)]" />{pending ? "Held at the approval gate" : mode === "live" ? "Decision saved to workspace" : "Decision saved locally"}</p><p className="mt-1 text-[11px] text-muted-foreground">{pending ? `${viewed.size} of ${approval.proposedActions.length} drafts opened · sending is disabled` : "No emails were sent."}</p></div>
         {pending && <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => setDecision("rejected")} disabled={editing}><X data-icon="inline-start" />Reject batch</Button><Button size="sm" onClick={() => setDecision("approved")} disabled={editing || !action}><Check data-icon="inline-start" />Approve {approval.proposedActions.length} drafts</Button></div>}
       </footer>
 
       <Dialog open={decision !== null} onOpenChange={(open) => { if (!open) setDecision(null); }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>{decision === "approved" ? "Approve this outreach batch?" : "Reject this outreach batch?"}</DialogTitle><DialogDescription>{decision === "approved" ? `Record approval for all ${approval.proposedActions.length} proposed emails. The workflow will be marked ready for execution. Sending remains unavailable in this demo.` : "Decline the proposed emails and mark this workflow as needing revision. No messages will be sent."}</DialogDescription></DialogHeader>
-          <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-5"><p className="font-medium">{workflowTitle}</p><p className="mt-1 text-muted-foreground">{viewed.size} of {approval.proposedActions.length} drafts opened. This decision applies to the entire batch and cannot be changed in this demo.</p></div>
-          <DialogFooter><Button variant="outline" onClick={() => setDecision(null)}>Go back</Button><Button variant={decision === "rejected" ? "destructive" : "default"} onClick={() => { if (decision) onDecision(decision); setDecision(null); }}>{decision === "approved" ? "Confirm approval" : "Confirm rejection"}</Button></DialogFooter>
+          <DialogHeader><DialogTitle>{decision === "approved" ? "Approve this outreach batch?" : "Reject this outreach batch?"}</DialogTitle><DialogDescription>{decision === "approved" ? `Record approval for all ${approval.proposedActions.length} proposed emails. The workflow will be marked ready for execution. Sending remains unavailable.` : "Decline the proposed emails and mark this workflow as needing revision. No messages will be sent."}</DialogDescription></DialogHeader>
+          <div className="rounded-md border border-border bg-muted/50 p-3 text-xs leading-5"><p className="font-medium">{workflowTitle}</p><p className="mt-1 text-muted-foreground">{viewed.size} of {approval.proposedActions.length} drafts opened. This decision applies to the entire batch and cannot be changed after it is saved.</p></div>
+          {decisionError && <p role="alert" className="text-xs text-destructive">{decisionError}</p>}
+          <DialogFooter><Button variant="outline" onClick={() => setDecision(null)} disabled={decisionPending}>Go back</Button><Button variant={decision === "rejected" ? "destructive" : "default"} onClick={confirmDecision} disabled={decisionPending}>{decisionPending ? "Saving…" : decision === "approved" ? "Confirm approval" : "Confirm rejection"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </section>

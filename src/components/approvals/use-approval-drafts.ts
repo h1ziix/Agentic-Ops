@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import { approvalMessageSchema } from "@/lib/validation/approval";
 
 const storageKey = "agentic-ops-approval-drafts-v1";
-export const approvalDraftSchema = z.object({
-  subject: z.string().trim().min(1, "Add a subject before saving.").max(200, "Keep the subject under 200 characters."),
-  body: z.string().trim().min(10, "Add a message of at least 10 characters.").max(10000, "Keep the message under 10,000 characters."),
-});
+export const approvalDraftSchema = approvalMessageSchema;
 export type ApprovalDraft = z.infer<typeof approvalDraftSchema>;
 const storedDraftsSchema = z.record(z.string(), approvalDraftSchema);
 

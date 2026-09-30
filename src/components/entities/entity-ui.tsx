@@ -54,5 +54,5 @@ export function EntityLoading({ title }: { title: string }) {
 }
 
 export function DemoSourceNote() {
-  return <p className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-[11px] leading-5 text-muted-foreground"><Building2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />Fictional demo profile. Source addresses are illustrative; research has not been independently verified.</p>;
+  return <p className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-[11px] leading-5 text-muted-foreground"><Building2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />Review source references and verify any claim before external outreach. Seeded profiles are sample data.</p>;
 }

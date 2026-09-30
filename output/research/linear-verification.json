@@ -1,0 +1,773 @@
+{
+  "verifiedAt": "2026-09-30T17:45:59.753Z",
+  "workflowId": "6abd2c08-2e38-4b46-a1a5-da2a92f5b479",
+  "runId": "7f0fdd7a-20b2-4d43-bec6-ac5c5e119c54",
+  "model": "gemini-3.5-flash-lite",
+  "company": {
+    "name": "Linear",
+    "website": "https://linear.app"
+  },
+  "sources": [
+    {
+      "id": "source_1",
+      "url": "https://linear.app/now/building-what-customers-need",
+      "title": "Building what customers need, not just what they ask for - Linear",
+      "content": "Our Customer Requests feature brings feedback from support tickets, Slack messages, and calls directly into Linear – where product and engineering teams can spot patterns, interpret needs, and build context that informs decisions.\n\nWe designed it to move beyond tallying votes for features — providing teams with concrete data to recognize patterns and build products users actually need.\n\nCustomer Requests enables teams to: [...] When product teams lack deep customer understanding, they explore paths that don’t address core customer problems. For larger companies especially, this creates significant waste — engineering resources go toward features that customers don’t need while crucial problems remain unsolved.\n\n#### Reading between our own lines⁠ [...] The best products emerge when strong vision meets deep customer understanding. Pure customer-led development and isolated visionary thinking both fall short of consistently producing breakthrough products. Develop your product intuition by immersing yourself in customer feedback while trusting your ability to see patterns and needs they cannot articulate. Treat customer requests as input, not instructions.\n\nSagan Schultz\n·",
+      "relevance": 0.8571119,
+      "retrievedAt": "2026-09-30T17:40:23.119Z"
+    },
+    {
+      "id": "source_2",
+      "url": "https://linear.app/features",
+      "title": "Features – Linear",
+      "content": "### Mobile\n\nMove product work forward from anywhere\n\n### Customer Requests\n\nBuild what customers   \n actually want\n\n### Linear Asks\n\nTurn workplace requests into actionable issues### Security\n\nBest-in-class security practices keep your work safe and secure0n\\d\n\n### Plan the present. Build the future.\n\nContact salesGet startedDownloadOpen app [...] Skip to content →\n\n# The system for modern product developmentThe system for modern product development\n\nLinear streamlines work across the entire development cycle, from roadmap to release.\n\n### Planning\n\nSet the product direction with projects and initiatives\n\n### Building\n\nMake progress with issue tracking and cycle planning\n\n### Artificial intelligence\n\nStreamline product development with AI-powered workflows and agents\n\n### Insights\n\nInstant analytics for any stream of work\n\n### Mobile",
+      "relevance": 0.80405265,
+      "retrievedAt": "2026-09-30T17:40:23.119Z"
+    },
+    {
+      "id": "source_3",
+      "url": "https://linear.app/docs/customer-requests",
+      "title": "Customer Requests – Linear Docs",
+      "content": "## Customers⁠\n\nA Customer in Linear represents an organization using your product. Customers have a unique domain, name, logo, and attributes which can be viewed on their page.\n\n### Customer pages⁠ [...] ## Configure⁠\n\nAdmins can enable Customer Requests in Workspace Settings > Customer requests. Once enabled, anyone in your workspace can view customer pages, create and update customers, and add customer requests to issues and projects in Linear or from a supported integration. [...] Skip to content →\n\n1. Issues\n2. Customer Requests\n\nSign upOpen app\n\n# Customer Requests\n\nBring the voice of the customer into product development.\n\n## Overview⁠\n\nCustomer Requests allow you to add detailed user feedback and customer attributes to Linear to better align product work with real user needs:",
+      "relevance": 0.74251556,
+      "retrievedAt": "2026-09-30T17:40:23.119Z"
+    },
+    {
+      "id": "source_4",
+      "url": "https://linear.app/customer-requests",
+      "title": "Customer Requests – Linear",
+      "content": "Customer Requests works seamlessly with the rest of the Linear systemCustomer Requests works seamlessly with the rest of the Linear system\n\nLinear Asks\n\nCreate customer requests from emails and shared Slack channels.Linear Developers\n\nBuild your own add-ons and integrations with the Linear API.Product Intelligence\n\nUse AI to auto-apply the right team, labels, and projects to new requests.\n\n### Bring the voice of your customers into Linear [...] ### Enrich requests with realtime customer data\n\nSync customer attributes such as company size, tier, or revenue from Salesforce and other systems of record.\n\n### Understand customer needs in full contextual detail\n\nRequests are directly attached to projects and issues, giving product teams full visibility into what customers are really asking for.\n\nIdle resource detection\n\nnow\n\nNew request from XMP\n\nMulti-cloud cost dashboard\n\nnow\n\nRequested project completed\n\nENG-943 Budget alerts\n\nnow [...] ### Auto-prioritize requests from high-impact customers\n\nCreate triage rules based on custom fields in Salesforce to route and prioritize incoming requests.\n\nBring customer focus to all your teamsCenter your organization around customer needs. Align product, engineering, and go-to-market teams around a shared mission to deliver exceptional customer experiences.",
+      "relevance": 0.69573146,
+      "retrievedAt": "2026-09-30T17:40:23.119Z"
+    },
+    {
+      "id": "source_5",
+      "url": "https://linear.app/integrations/lindy",
+      "title": "Lindy Integration – Linear",
+      "content": "Skip to content →\n\n1. Integrations\n2. Lindy\n\n# Automate your Linear workflows with AI\n\n## Overview⁠\n\nThe Lindy.ai and Linear integration allows users to use AI to automate the creation of issues and the management of issues, projects, statuses, and users. This powerful integration allows users to automate workflows that includes Linear.\n\n## How it works⁠ [...] When building an automated workflow in Lindy, you can add Linear actions to your workflow. This means anytime the workflow is triggered, actions in Linear can be executed with the help of AI. The actions supported today are:  \n- Create issue  \n- Get Issue by ID  \n- Get Issue by Title  \n- Get Projects  \n- Get Statuses  \n- Get Teams  \n- Get User by Name [...] A common workflow seen is to automatically create a Linear issue every time a row is added to a Google Sheets spreadsheet, and update the sheet with the Linear link. AI can be used to fill out the issue details, or to instruct how the Linear link should be entered on the sheet.",
+      "relevance": 0.8872928,
+      "retrievedAt": "2026-09-30T17:40:25.675Z"
+    },
+    {
+      "id": "source_6",
+      "url": "https://linear.app/integrations/automations",
+      "title": "Automations Integrations – Linear",
+      "content": "Skip to content →\n\n1. Integrations\n2. Automations\n\n# Build custom workflows and automations\n\nBuild custom automations to create or update Linear issuesCreate issues via email\n\nSet up email addresses for teams or templates to create issues via emailSmoothly transition from Jira to LinearCreate, search, and modify your issues from anywhereSync your Linear data with the Fivetran connectorNEXUPIRA\n\nConnect Linear so NEXUPIRA's AI agents can create, update, search, and comment on issues\n\nIFTTT [...] Automate your Linear workflows with AITurn meetings into action items automaticallyAutomatically create issues in Linear whenever a test failsCreate issues in Linear using powerful intake forms\n\n## Build your own integration\n\nCreate your own integration with Linear’s API and submit it to the directory.\n\nStart building\n\n## Build your own integration\n\nCreate your own integration with Linear’s API and submit it to the directory. [...] Automatically include Linear activity in smart async check-insLangSmith Agent Builder\n\nCreate an AI agent that uses LinearReclaim.ai\n\nAI scheduling for your Linear issues to Google Calendar & Outlook CalendarQuicktion\n\nQuicktion turns forwarded emails into Linear issuesn8n\n\nBuild workflows that automatically manage your issuesJet Admin\n\nNo-Code Web App BuilderCircleback\n\nAutomatically create Linear issues from meeting action itemsTraqq\n\nTrack time in Linear with TraqqAxolo",
+      "relevance": 0.850382,
+      "retrievedAt": "2026-09-30T17:40:25.675Z"
+    },
+    {
+      "id": "source_7",
+      "url": "https://linear.app/integrations/ai-clients",
+      "title": "AI clients Integrations – Linear",
+      "content": "Skip to content →\n\n1. Integrations\n2. AI clients\n\n# Let external AI apps read and act on Linear data\n\nCursor MCP\n\nConnect Cursor to the Linear MCP serverConnect ChatGPT deep research to LinearConnect Claude to the Linear MCP serverv0 by Vercel MCP connector\n\nConnect v0 and Linear through MCPConnect Windsurf to the Linear MCP serverReplit\n\nBuild Apps & Automations\n\nDust\n\nBuild AI workflows with Linear issuesADK\n\nConnect your Google ADK agents to LinearCleanSlate [...] Automatically track time to Linear task and projectsAttio Agents\n\nConnect Attio Agents to the Linear MCP ServerVisual Studio Code MCP\n\nConnect VS Code to the Linear MCP serverAPX\n\nDetect and fix issues in DataDog and Postgres with AI agentsAlkemi\n\nGet insight into product and engineering progress with AlkemiNotion Custom Agents\n\nConnect Notion Custom Agents to the Linear MCP ServerSuper\n\nTurn Linear data into instant answers & AI agents for your whole teamFigma Make [...] Search, create, update, and discuss Linear issues with CleanSlate agentsLovable MCP\n\nBuild and deploy apps from Linear with LovableTusk\n\nGenerate unit tests with AI using Linear issues as contextJules MCP\n\nConnect Jules to the Linear MCP serverSpellar AI\n\nExport tasks from your meetings with one click in SpellarAgno\n\nBuild lightning-fast, multi-modal Reasoning AgentsProducta\n\nAI to automate solving your issuesFellow\n\nStreamline issue tracking in meeting agendas and notesPostman Agent Mode",
+      "relevance": 0.7876867,
+      "retrievedAt": "2026-09-30T17:40:25.675Z"
+    },
+    {
+      "id": "source_8",
+      "url": "https://linear.app/integrations/latenode",
+      "title": "Latenode Integration – Linear",
+      "content": "Skip to content →\n\n1. Integrations\n2. Latenode\n\n# Connect Linear with Latenode for enhanced workflow automation\n\n## Overview⁠\n\nLatenode empowers you to connect Linear with various SaaS tools, enabling smooth automation of your business processes. This integration allows you to streamline issue tracking and management without needing any coding skills.\n\n## How it works⁠ [...] ## How it works⁠\n\nLatenode provides a visual interface for creating complex workflows. Utilize drag-and-drop functionality to connect Linear with your preferred apps, crafting scenarios that can run instantly or on a schedule. With Latenode, you can build automations from simple tasks to intricate processes, all without programming expertise.\n\n## Configure⁠\n\nVisit Linear’s Latenode integration page to start building workflows with Latenode actions and connect with other apps. [...] #### You might be interested in\n\nBrowse all integrations\n\n Zapier\n\n  By Linear\n\n  Build custom automations to create or update Linear issues\n Make\n\n  By Make\n\n  Connect Linear with over 1,900 SaaS tools to automate business workflows\n\n## Build your own integration\n\nCreate your own integration with Linear’s API and submit it to the directory.\n\nStart building\n\n## Build your own integration\n\nCreate your own integration with Linear’s API and submit it to the directory.",
+      "relevance": 0.63179934,
+      "retrievedAt": "2026-09-30T17:40:25.675Z"
+    }
+  ],
+  "analysis": {
+    "company": {
+      "description": "Linear is a modern software development and issue tracking system that streamlines work across the entire development cycle, from roadmap to release.",
+      "industry": "B2B SaaS / Developer Tools",
+      "location": null,
+      "employeeEstimate": null,
+      "researchSummary": "Linear provides issue tracking, project planning, and product development tooling. They feature native integrations and support AI workflows, connecting with platforms like Lindy, Cursor MCP, and Claude to automate issues and team processes."
+    },
+    "facts": [
+      {
+        "claim": "Linear features built-in support for AI-powered workflows and agents.",
+        "sourceId": "source_2",
+        "quote": "Artificial intelligence\n\nStreamline product development with AI-powered workflows and agents"
+      },
+      {
+        "claim": "Linear integrates with AI and automation tools like Lindy to automate issue creation and management.",
+        "sourceId": "source_5",
+        "quote": "The Lindy.ai and Linear integration allows users to use AI to automate the creation of issues and the management of issues, projects, statuses, and users."
+      }
+    ],
+    "icp": {
+      "score": 90,
+      "reason": "Linear is a prime B2B SaaS product team building developer tooling with extensive workflow integrations and clear evidence of AI-powered workflows.",
+      "sourceIds": [
+        "source_2",
+        "source_5"
+      ],
+      "components": {
+        "marketFit": 40,
+        "offeringFit": 35,
+        "evidenceQuality": 15
+      }
+    },
+    "lead": {
+      "score": 85,
+      "scoreReason": "Linear has strong ICP fit as a product team building software with workflow integrations. Opportunity exists around scaling agentic operations, though specific buying intent or internal decision-maker signals are not directly mentioned in the public text.",
+      "opportunity": "Explore partnership or integration enhancements leveraging Agentic Ops for automated sales and product research workflows within Linear's ecosystem.",
+      "confidence": "medium",
+      "sourceIds": [
+        "source_2",
+        "source_5",
+        "source_6"
+      ],
+      "components": {
+        "icpFit": 45,
+        "opportunity": 25,
+        "readiness": 15
+      }
+    },
+    "outreach": {
+      "subject": "AI-powered sales research and workflow automation for Linear",
+      "body": "Hi Linear Team,\n\nLinear streamlines software development cycles with impressive issue tracking and AI workflow capabilities. As you continue building advanced integrations with tools like Lindy and MCP clients, how are you currently approaching evidence-based AI sales research and personalized outbound drafts for your own team?\n\nAgentic Ops provides evidence-based AI sales research and personalized outreach drafts with human approval before any outbound actions take place. We would love to share how this could complement your product ecosystem.\n\nBest regards,\nAgentic Ops Team",
+      "sourceIds": [
+        "source_2",
+        "source_5",
+        "source_7"
+      ]
+    },
+    "uncertainties": [
+      "Exact employee count and headquarters location are not provided in the source text.",
+      "Internal decision-makers for workflow automation tools are not identified."
+    ]
+  },
+  "queries": [
+    {
+      "query": "site:linear.app Linear product customers features",
+      "cached": true,
+      "sourceCount": 4
+    },
+    {
+      "query": "site:linear.app Linear integrations automation AI workflows",
+      "cached": true,
+      "sourceCount": 4
+    }
+  ],
+  "budget": {
+    "searchRequests": 0,
+    "searchCreditsReserved": 0,
+    "modelRequests": 1,
+    "cacheHits": 2
+  },
+  "approvalRequired": true,
+  "tavilyQueriesPerformed": [
+    "site:linear.app Linear product customers features",
+    "site:linear.app Linear integrations automation AI workflows"
+  ],
+  "resumedFromCachedEvidence": true,
+  "savedCompany": {
+    "id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+    "workspace_id": "649e4d1f-a863-44a3-9901-5457eebf5814",
+    "workflow_id": "6abd2c08-2e38-4b46-a1a5-da2a92f5b479",
+    "name": "Linear",
+    "website": "https://linear.app",
+    "industry": "B2B SaaS / Developer Tools",
+    "location": null,
+    "description": "Linear is a modern software development and issue tracking system that streamlines work across the entire development cycle, from roadmap to release.",
+    "employee_estimate": null,
+    "research_summary": "Linear provides issue tracking, project planning, and product development tooling. They feature native integrations and support AI workflows, connecting with platforms like Lindy, Cursor MCP, and Claude to automate issues and team processes.",
+    "research_status": "researched",
+    "source_urls": [
+      "https://linear.app/now/building-what-customers-need",
+      "https://linear.app/features",
+      "https://linear.app/docs/customer-requests",
+      "https://linear.app/customer-requests",
+      "https://linear.app/integrations/lindy",
+      "https://linear.app/integrations/automations",
+      "https://linear.app/integrations/ai-clients",
+      "https://linear.app/integrations/latenode"
+    ],
+    "last_researched_at": "2026-09-30T17:45:59.493613+00:00",
+    "created_at": "2026-09-30T17:40:21.544778+00:00",
+    "updated_at": "2026-09-30T17:45:59.48911+00:00"
+  },
+  "savedLead": {
+    "id": "f5a2bb0d-1613-41a7-8a92-2a6ff3c407e6",
+    "workspace_id": "649e4d1f-a863-44a3-9901-5457eebf5814",
+    "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+    "workflow_id": "6abd2c08-2e38-4b46-a1a5-da2a92f5b479",
+    "status": "waiting_approval",
+    "score": 85,
+    "score_reason": "Linear has strong ICP fit as a product team building software with workflow integrations. Opportunity exists around scaling agentic operations, though specific buying intent or internal decision-maker signals are not directly mentioned in the public text.",
+    "opportunity": "Explore partnership or integration enhancements leveraging Agentic Ops for automated sales and product research workflows within Linear's ecosystem.",
+    "confidence": "medium",
+    "outreach_status": "waiting_approval",
+    "created_at": "2026-09-30T17:45:59.48911+00:00",
+    "updated_at": "2026-09-30T17:45:59.48911+00:00"
+  },
+  "approvalId": "7583de1c-69ee-4f19-b8a7-87c0ff2a1e19",
+  "approvalStatus": "pending",
+  "workflowStatus": "waiting_for_approval",
+  "actionStatus": "waiting_for_approval",
+  "executedAt": null,
+  "metrics": {
+    "durationMs": 5388,
+    "totalTokens": 3941,
+    "retries": 0
+  },
+  "idempotentReplayVerified": true,
+  "events": [
+    {
+      "event_type": "workflow_created",
+      "summary": "Linear supplied for the requested live research verification",
+      "metadata": {
+        "source": "manual_verification"
+      },
+      "created_at": "2026-09-30T17:40:21.32137+00:00"
+    },
+    {
+      "event_type": "company_discovered",
+      "summary": "Company supplied for evidence-based research",
+      "metadata": {
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f"
+      },
+      "created_at": "2026-09-30T17:40:21.544778+00:00"
+    },
+    {
+      "event_type": "agent_started",
+      "summary": "Research Agent started",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "max_model_requests": 2,
+        "max_search_requests": 3
+      },
+      "created_at": "2026-09-30T17:40:21.544778+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:40:21.7603+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "cached": 0,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:40:24.589643+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:40:24.799274+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "cached": 0,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:40:27.006184+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:40:27.211347+00:00"
+    },
+    {
+      "event_type": "retry",
+      "summary": "Retrying gemini within the shared research budget",
+      "metadata": {
+        "delay_ms": 1000,
+        "provider": "gemini"
+      },
+      "created_at": "2026-09-30T17:40:35.368096+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:40:36.573616+00:00"
+    },
+    {
+      "event_type": "agent_failed",
+      "summary": "gemini is temporarily unavailable or rate limited. Please retry later.",
+      "metadata": {
+        "duration_ms": 22064,
+        "retry_count": 1,
+        "total_tokens": null
+      },
+      "created_at": "2026-09-30T17:40:43.842392+00:00"
+    },
+    {
+      "event_type": "agent_started",
+      "summary": "Research Agent started",
+      "metadata": {
+        "model": "gemini-2.5-flash",
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "max_model_requests": 2,
+        "max_search_requests": 3
+      },
+      "created_at": "2026-09-30T17:43:20.104427+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:43:20.328398+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:43:20.746482+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:43:20.951066+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:43:21.373081+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-2.5-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:43:21.57874+00:00"
+    },
+    {
+      "event_type": "error",
+      "summary": "gemini request failed safely",
+      "metadata": {
+        "provider": "gemini",
+        "error_code": "ai_configuration",
+        "http_status": 404,
+        "retry_after_ms": 1000
+      },
+      "created_at": "2026-09-30T17:43:22.209138+00:00"
+    },
+    {
+      "event_type": "agent_failed",
+      "summary": "gemini is not configured or accessible. Check the server credentials and model access.",
+      "metadata": {
+        "duration_ms": 2091,
+        "retry_count": 0,
+        "total_tokens": null
+      },
+      "created_at": "2026-09-30T17:43:22.418946+00:00"
+    },
+    {
+      "event_type": "agent_started",
+      "summary": "Research Agent started",
+      "metadata": {
+        "model": "gemini-2.5-flash",
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "max_model_requests": 2,
+        "max_search_requests": 3
+      },
+      "created_at": "2026-09-30T17:44:53.551884+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:44:53.774067+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:44:54.187345+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:44:54.392398+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:44:54.798528+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-2.5-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:44:55.003588+00:00"
+    },
+    {
+      "event_type": "error",
+      "summary": "gemini request failed safely",
+      "metadata": {
+        "provider": "gemini",
+        "error_code": "ai_configuration",
+        "http_status": 404,
+        "retry_after_ms": 1000
+      },
+      "created_at": "2026-09-30T17:44:55.8206+00:00"
+    },
+    {
+      "event_type": "agent_failed",
+      "summary": "gemini is not configured or accessible. Check the server credentials and model access.",
+      "metadata": {
+        "duration_ms": 2257,
+        "retry_count": 0,
+        "total_tokens": null
+      },
+      "created_at": "2026-09-30T17:44:56.025538+00:00"
+    },
+    {
+      "event_type": "agent_started",
+      "summary": "Research Agent started",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "max_model_requests": 2,
+        "max_search_requests": 3
+      },
+      "created_at": "2026-09-30T17:45:16.929202+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:45:17.140598+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:45:17.552898+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:45:17.759089+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:45:18.166256+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:45:18.370926+00:00"
+    },
+    {
+      "event_type": "error",
+      "summary": "gemini request failed safely",
+      "metadata": {
+        "provider": "gemini",
+        "error_code": "ai_unavailable",
+        "http_status": 503,
+        "retry_after_ms": 1000
+      },
+      "created_at": "2026-09-30T17:45:21.465229+00:00"
+    },
+    {
+      "event_type": "retry",
+      "summary": "Retrying gemini within the shared research budget",
+      "metadata": {
+        "delay_ms": 1000,
+        "provider": "gemini"
+      },
+      "created_at": "2026-09-30T17:45:21.675972+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-3.8-flash",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:45:22.882052+00:00"
+    },
+    {
+      "event_type": "error",
+      "summary": "gemini request failed safely",
+      "metadata": {
+        "provider": "gemini",
+        "error_code": "ai_unavailable",
+        "http_status": 503,
+        "retry_after_ms": 1000
+      },
+      "created_at": "2026-09-30T17:45:27.425831+00:00"
+    },
+    {
+      "event_type": "agent_failed",
+      "summary": "gemini is temporarily unavailable or rate limited. Please retry later.",
+      "metadata": {
+        "duration_ms": 10492,
+        "retry_count": 1,
+        "total_tokens": null
+      },
+      "created_at": "2026-09-30T17:45:27.635667+00:00"
+    },
+    {
+      "event_type": "agent_started",
+      "summary": "Research Agent started",
+      "metadata": {
+        "model": "gemini-3.5-flash-lite",
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "max_model_requests": 2,
+        "max_search_requests": 3
+      },
+      "created_at": "2026-09-30T17:45:53.859116+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:45:54.073572+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear product customers features",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:45:54.488329+00:00"
+    },
+    {
+      "event_type": "tool_called",
+      "summary": "Research requested Tavily evidence",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "tool_name": "tavily_search",
+        "search_depth": "basic"
+      },
+      "created_at": "2026-09-30T17:45:54.69403+00:00"
+    },
+    {
+      "event_type": "tool_completed",
+      "summary": "Tavily evidence normalized",
+      "metadata": {
+        "query": "site:linear.app Linear integrations automation AI workflows",
+        "cached": 1,
+        "tool_name": "tavily_search",
+        "source_count": 4
+      },
+      "created_at": "2026-09-30T17:45:55.108138+00:00"
+    },
+    {
+      "event_type": "model_request_started",
+      "summary": "Gemini analyzing Tavily evidence and drafting outreach for review",
+      "metadata": {
+        "model": "gemini-3.5-flash-lite",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:45:55.316693+00:00"
+    },
+    {
+      "event_type": "reasoning_summary",
+      "summary": "Evidence validation passed; scores and outreach proposal await human review",
+      "metadata": {
+        "icp_score": 90,
+        "cache_hits": 2,
+        "lead_score": 85,
+        "source_count": 8,
+        "search_requests": 0
+      },
+      "created_at": "2026-09-30T17:45:59.224476+00:00"
+    },
+    {
+      "event_type": "company_researched",
+      "summary": "Company profile saved with Tavily source URLs",
+      "metadata": {
+        "company_id": "c6f25a54-3d4c-4146-b1af-666d5f0bc41f",
+        "source_count": 8
+      },
+      "created_at": "2026-09-30T17:45:59.48911+00:00"
+    },
+    {
+      "event_type": "lead_scored",
+      "summary": "Evidence-based ICP and lead scores saved",
+      "metadata": {
+        "lead_id": "f5a2bb0d-1613-41a7-8a92-2a6ff3c407e6",
+        "icp_score": 90,
+        "lead_score": 85
+      },
+      "created_at": "2026-09-30T17:45:59.48911+00:00"
+    },
+    {
+      "event_type": "approval_requested",
+      "summary": "Personalized outreach draft awaits human approval",
+      "metadata": {
+        "approval_id": "7583de1c-69ee-4f19-b8a7-87c0ff2a1e19",
+        "action_count": 1
+      },
+      "created_at": "2026-09-30T17:45:59.48911+00:00"
+    },
+    {
+      "event_type": "agent_completed",
+      "summary": "Research Agent completed; no outbound action executed",
+      "metadata": {
+        "duration_ms": 5388,
+        "retry_count": 0,
+        "total_tokens": 3941
+      },
+      "created_at": "2026-09-30T17:45:59.48911+00:00"
+    }
+  ],
+  "filesChanged": [
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\.env.example",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\README.md",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\package.json",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\scripts\\verify-client-secrets.mjs",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\agent-runtime.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\config.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\errors.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\services\\planning-service.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\output\\research\\linear-verification.json",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\scripts\\verify-research.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\app\\api\\workflows\\[id]\\research\\route.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\lib\\validation\\research.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\gemini-provider.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\provider-http.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\research-agent.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\research-budget.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\research-orchestrator.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\research-providers.test.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\research.test.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\tavily-provider.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\agents\\testing\\research-fixtures.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\repositories\\research-repository.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\src\\server\\services\\research-service.ts",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\supabase\\migrations\\202609300003_research_pipeline.sql",
+    "C:\\Users\\rausa\\OneDrive\\Рабочий стол\\agentic-ops\\supabase\\tests\\research_runtime.sql"
+  ],
+  "verificationChecks": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "unitTests": {
+      "passed": 36,
+      "failed": 0
+    },
+    "productionBuild": "passed",
+    "databaseRegressionSuites": [
+      "planner_runtime.sql: passed with rollback",
+      "research_runtime.sql: passed with rollback"
+    ],
+    "clientSecretScan": {
+      "assetsChecked": 35,
+      "configuredCredentialsChecked": 3,
+      "secretValuesFound": 0,
+      "secretIdentifiersFound": 0
+    },
+    "unauthenticatedResearchEndpoint": {
+      "status": 401
+    },
+    "signInRender": {
+      "status": 200
+    }
+  },
+  "providerAvailabilityNotes": [
+    "gemini-3.8-flash returned HTTP 503 overload errors",
+    "gemini-2.5-flash is unavailable to new users",
+    "The same Linear workflow completed with gemini-3.5-flash-lite using its real Tavily cache"
+  ],
+  "providerRequestsInVerification": {
+    "tavily": 2,
+    "gemini": 7
+  }
+}

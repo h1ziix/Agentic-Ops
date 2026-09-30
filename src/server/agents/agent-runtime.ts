@@ -5,14 +5,23 @@ import { PLANNER_MAX_ATTEMPTS } from "./config";
 import { PlannerError } from "./errors";
 import { PlannerAgent } from "./planner-agent";
 import type { TokenUsage } from "./planner-agent";
+import type { ResearchAgent } from "./research-agent";
+import type { ResearchInput } from "@/lib/validation/research";
 
 export type RuntimeEvent = (type: AgentEventType, summary: string, metadata: Record<string, string | number>) => Promise<void>;
 
 /** One bounded execution policy shared by future typed agents, without a generic framework. */
 export class AgentRuntime {
-  constructor(private readonly planner: PlannerAgent, private readonly wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))) {}
+  constructor(private readonly planner: PlannerAgent | null, private readonly wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+    private readonly researcher?: ResearchAgent) {}
+
+  research(input: ResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
+    if (!this.researcher) throw new PlannerError("ai_configuration", false);
+    return this.researcher.research(input, model, record, metrics);
+  }
 
   async plan(input: PlannerInput, model: string, record: RuntimeEvent, metrics: AgentMetrics): Promise<PlannerOutput> {
+    if (!this.planner) throw new PlannerError("ai_configuration", false);
     const measure = (usage: TokenUsage | null) => {
       if (!usage) return;
       metrics.inputTokens = (metrics.inputTokens ?? 0) + usage.inputTokens;

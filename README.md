@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops is an operational workspace for sales research workflows. Stage 3 adds a real Planner runtime to the existing Supabase Auth, PostgreSQL persistence, workflow services and audit history. A goal becomes a validated, persisted task plan through a server-side OpenAI call. Research, email sending and CRM execution remain future stages. Approving a proposed action records a decision; it does not execute the action.
+Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. A supplied company becomes Tavily evidence, a validated Gemini analysis, ICP and lead scores, and a personalized outreach proposal awaiting human approval. Approving a proposal records a decision; it does not execute the action.
 
 ## Requirements
 
@@ -16,9 +16,9 @@ Copy-Item .env.example .env.local
 
 Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.env.local` from your Supabase project's **Connect** dialog. For a local stack, use the API URL and publishable key printed by `supabase status`. Set `NEXT_PUBLIC_APP_URL` to the canonical app origin (`http://localhost:3000` for local development); sign-up uses it to build the fixed email confirmation callback. The publishable key is client-visible and access is controlled by Supabase Auth and row-level security. Do not add a secret or service-role key to the frontend or commit `.env.local`.
 
-Set `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` on the server for the runtime. Legacy Supabase projects may use `SUPABASE_SERVICE_ROLE_KEY` instead of `SUPABASE_SECRET_KEY`. These credentials are imported through server-only modules and must never have a `NEXT_PUBLIC_` prefix. Supabase's [secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) authorize the service-role writer. Cookie-bound reads verify identity and workspace membership before the runtime writer is constructed; the planning RPC also checks the supplied verified user's membership.
+Set `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, and `AI_PROVIDER=gemini` on the server. Legacy Supabase projects may use `SUPABASE_SERVICE_ROLE_KEY` instead of `SUPABASE_SECRET_KEY`. These credentials are imported through server-only modules and must never have a `NEXT_PUBLIC_` prefix. Supabase's [secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) authorize the service-role writer. Cookie-bound reads verify identity and workspace membership before the runtime writer is constructed; the runtime RPCs also check the supplied verified user's membership.
 
-`OPENAI_PLANNER_MODEL` optionally overrides the default `gpt-4.1-mini`. The selected model must support the Responses API and strict Structured Outputs. Model and bounded execution settings live in `src/server/agents/config.ts`; instructions live in `planner-prompt.ts`. The provider uses the official OpenAI SDK's [Responses structured output helper](https://developers.openai.com/api/docs/guides/structured-outputs), with SDK retries disabled so the runtime controls its retry limit.
+`GEMINI_MODEL` optionally overrides the default `gemini-3.5-flash-lite` for research and Gemini planning. The model must support JSON Schema structured output. The existing OpenAI Planner remains available with `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optional `OPENAI_PLANNER_MODEL` (default `gpt-4.1-mini`). Research uses Gemini regardless of the planning provider. Model configuration lives in `src/server/agents/config.ts`; research limits live in `research-budget.ts`.
 
 ## Apply the database schema
 
@@ -95,11 +95,11 @@ Authenticated reads are scoped by workspace membership in PostgreSQL policies. C
 1. Workflow creation persists a `planning` workflow and its creation event, without deterministic starter tasks. The detail screen dispatches planning immediately and polls status independently every 1.5 seconds while visible. Refreshing or reopening an unfinished workflow safely dispatches the same operation again.
 2. `planning-service.ts` verifies the user and workspace and constructs the Orchestrator. `Orchestrator.planWorkflow({ workflowId, workspaceId, userId })` loads the workflow and existing tasks/runs before any paid request.
 3. `start_planner_run` claims one active Planner run under the existing workflow row lock. It atomically records the planning state, run and start events. Concurrent requests return the existing run. An interrupted run expires after three minutes and can be recovered when the workflow is reopened or planning is retried.
-4. `AgentRuntime` invokes the pure `PlannerAgent` through the OpenAI provider. Responses are checked with Zod, then domain validation rejects missing/forward/cyclic dependencies, duplicate IDs/titles, unsupported tasks and incomplete approval gates. Recoverable provider/validation errors get one retry; configuration errors, exhausted API credit/spend limits and refusals do not. Quota errors direct the administrator to API billing before an explicit retry. Audit failures stop execution.
+4. `AgentRuntime` invokes the pure `PlannerAgent` through the configured Gemini or OpenAI provider. Responses are checked with Zod, then domain validation rejects missing/forward/cyclic dependencies, duplicate IDs/titles, unsupported tasks and incomplete approval gates. Recoverable provider/validation errors get one retry; configuration errors, exhausted API credit/spend limits and refusals do not. Quota errors direct the administrator to API billing before an explicit retry. Audit failures stop execution.
 5. `complete_planner_run` atomically inserts all validated tasks and their creation events, saves the structured plan and metrics, completes the run, and transitions the workflow to `running`. Every generated task remains `pending`; planning does not perform or claim research. Successful replay returns the existing run without calling OpenAI or creating more tasks.
 6. Failure records safe error details, an `agent_failed` event and a failed workflow. Explicit retry is allowed only for failed planning with no saved tasks. This narrowly scoped retry does not change Stage 2's general terminal state rules. A late response cannot overwrite an expired/cancelled run or changed workflow.
 
-The detail page displays summary, assumptions, task objectives, expected outputs, dependencies, model, duration, retry count, observed token usage, and persisted trace events. No raw provider errors, secrets, reasoning items or hidden chain-of-thought are stored or sent to the browser. `store: false` disables provider response storage. Usage records observed API token counts; it does not estimate cost.
+The detail page displays summary, assumptions, task objectives, expected outputs, dependencies, model, duration, retry count, observed token usage, and persisted trace events. No raw provider errors, secrets, reasoning items or hidden chain-of-thought are stored or sent to the browser. The OpenAI provider sets `store: false`. Usage records observed API token counts; it does not estimate cost.
 
 Stage 3 uses an awaited HTTP request for planning, separate from progress polling. It does not require a queue or background worker. The provider and persistence ports let a later job runner invoke the same Orchestrator. A database outage can prevent failure events from being saved; the UI reports this and the expired claim recovery prevents a permanently stuck run.
 
@@ -118,3 +118,31 @@ npx supabase@latest db query --linked --file supabase/tests/planner_runtime.sql
 All SQL fixtures are created inside a transaction and rolled back. This suite makes no OpenAI requests. `npm run verify:client-secrets` scans production browser assets for the configured server secrets and fails without printing their values.
 
 For manual end-to-end verification, sign in and create a workflow with: “Find 20 SaaS companies in Kazakhstan that could benefit from AI automation and prepare personalized outreach. Do not send anything without approval.” Check planning progress, completed Planner run, pending task details, trace and refresh persistence. To verify the missing-key path, temporarily remove only `OPENAI_API_KEY` from the development server environment, create a separate test workflow, restore the key, then use **Retry planning**. No research or outbound action is executed.
+
+## Company research pipeline
+
+`POST /api/workflows/:id/research` accepts either `{ "companyId": "UUID" }` for a saved company or `{ "name": "Linear", "website": "https://linear.app" }`. The workflow must be running or waiting for approval. Optional `icp` contains `description` and `offering`; otherwise the workflow goal supplies the ICP and Agentic Ops sales research supplies the offering. The endpoint requires a same-origin request, a verified Supabase session, and workspace membership. Company IDs cannot cross workflows or workspaces.
+
+The server uses the existing `AgentRuntime`, `AgentRunService`, `EventService`, and Supabase service-role RPC pattern. It requests two domain-scoped Tavily basic searches with automatic search upgrades and generated answers disabled. Results are deduplicated, bounded, validated, and cached in a server-only, workspace-scoped Supabase table for 24 hours. Original source URLs and retrieval timestamps are preserved. Cache writes occur before analysis, so a failed Gemini request can reuse evidence on explicit retry.
+
+Gemini receives only the supplied goal, ICP and normalized Tavily snippets. It has no browsing tools. Zod validates the profile, quoted facts, score components, uncertainties, and outreach. Citation IDs must refer to supplied evidence, quotes must appear in its snippets, and score components must sum correctly. Unknown location and employee counts remain null; unverified sales needs are hypotheses. An ICP score and a lead score are estimates against the supplied criteria, not proof of buying intent.
+
+Each research run allows at most two search queries, three Tavily HTTP attempts/basic-credit reservations, two Gemini requests, and one retry shared across both providers. Each search returns at most four results, with at most eight sources and 3,500 characters per snippet. Gemini output is capped at 6,000 tokens per attempt, and provider execution has a 170-second budget. HTTP 429/5xx responses use bounded retry delays; `Retry-After` and Gemini `RetryInfo` are honored. Long delays, configuration failures, and exhausted quotas fail safely. Every retry consumes the same run budget.
+
+`start_research_run` serializes claims under the workflow lock. `complete_research_run` atomically saves the company profile and URLs, lead score, complete evidence/analysis in the Agent Run, outreach proposal, pending approval and audit events. It transitions the workflow to `waiting_for_approval`. Replaying the same request returns its existing run without provider calls or duplicate proposals. Interrupted claims expire after three minutes; cancellation blocks late results. Reviewed or sent outreach cannot be overwritten. No email provider, CRM writer, or outbound executor is implemented. Recipient details must be verified by a human.
+
+This endpoint starts from a known company; broad company discovery and batch scheduling remain separate stages. Research events and records appear through existing workspace views without frontend changes.
+
+Run database regressions (fixtures roll back, no paid calls):
+
+```powershell
+npx supabase@latest db query --linked --file supabase/tests/research_runtime.sql
+```
+
+Run the explicit **paid, real** Linear verification with an existing workspace member:
+
+```powershell
+npm run verify:research -- --workspace WORKSPACE_UUID --user USER_UUID
+```
+
+The script uses the production server providers and orchestrator, creates one real workflow in that workspace, asserts persistence and the pending approval, and verifies replay without new provider calls. Add `--workflow WORKFLOW_UUID` to resume the same verification after a provider failure, using its cached Tavily evidence. It writes `output/research/linear-verification.json` with queries, sources, model, profile, scores, draft, metrics, and trace. It never approves or sends the proposal. Unit tests use fixtures; this manual verification has no mocked providers. Run typecheck, lint, tests, build, and `verify:client-secrets` afterward.

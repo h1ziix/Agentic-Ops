@@ -5,5 +5,10 @@ export const PLANNER_TIMEOUT_MS = 60_000;
 export const PLANNER_MAX_OUTPUT_TOKENS = 6_000;
 
 export function getPlannerModel(): string {
+  if (process.env.AI_PROVIDER?.trim() === "gemini") return getResearchModel();
   return process.env.OPENAI_PLANNER_MODEL?.trim() || DEFAULT_PLANNER_MODEL;
+}
+
+export function getResearchModel(): string {
+  return process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 }

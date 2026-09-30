@@ -11,6 +11,7 @@ import { AgentRuntime } from "../agents/agent-runtime";
 import { Orchestrator } from "../agents/orchestrator";
 import { PlannerAgent } from "../agents/planner-agent";
 import { OpenAIPlannerProvider } from "../agents/openai-planner-provider";
+import { GeminiPlannerProvider } from "../agents/gemini-provider";
 
 /** Request boundary. A future job runner can invoke the same orchestrator with verified context. */
 export async function planWorkflow(workflowId: string) {
@@ -26,6 +27,6 @@ export async function planWorkflow(workflowId: string) {
     listWorkflowTasks: workflows.listWorkflowTasks.bind(workflows),
     listWorkspaceRuns: reads.listWorkspaceRuns.bind(reads),
   }, new AgentRunService(new AgentRunRepository(admin)), new EventService(new AgentEventRepository(admin)),
-  new AgentRuntime(new PlannerAgent(new OpenAIPlannerProvider())));
+  new AgentRuntime(new PlannerAgent(process.env.AI_PROVIDER?.trim() === "gemini" ? new GeminiPlannerProvider() : new OpenAIPlannerProvider())));
   return orchestrator.planWorkflow({ workflowId: id.data, workspaceId: workspace.id, userId: user.id });
 }

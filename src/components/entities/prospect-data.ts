@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useDemoStore } from "@/components/app/demo-store";
 import type { Company, Lead, OutreachStatus } from "@/types/domain";
 
-export const entityDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+export const entityDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "Asia/Almaty" });
 
 export function outreachLabel(status: OutreachStatus) {
   const labels: Record<OutreachStatus, string> = { not_started: "Not started", drafted: "Drafted", waiting_approval: "Needs review", approved: "Approved", sent: "Sent" };

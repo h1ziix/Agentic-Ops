@@ -2,6 +2,7 @@ import { safePublicUrl } from "@/lib/format";
 import type { AgentName, AgentEvent, Approval, Company, Lead, StepStatus, WorkspaceViewData } from "@/types/domain";
 import type { AgentRunRow, WorkflowTaskRow, WorkspaceSnapshot } from "@/types/persistence";
 import { plannerTaskContextSchema, validatedPlannerOutputSchema } from "@/lib/validation/planner";
+import { researchAnalysisSchema } from "@/lib/validation/research";
 
 const stageDefinitions = [
   { label: "Planning", taskTypes: ["define_target_profile"] },
@@ -36,13 +37,13 @@ function stageStatus(tasks: WorkflowTaskRow[]): StepStatus {
 const eventTitles: Record<string, string> = {
   workflow_planning_started: "Workflow planning started",
   agent_started: "Agent started",
-  model_request_started: "Structured plan requested",
+  model_request_started: "Model request started",
   plan_generated: "Plan generated",
   plan_validation_failed: "Plan validation failed",
   task_created: "Task created",
   agent_completed: "Agent completed",
   agent_failed: "Agent failed",
-  retry: "Planner retry",
+  retry: "Agent retry",
   workflow_created: "Workflow created",
   workflow_started: "Workflow started",
   workflow_paused: "Workflow paused",
@@ -72,9 +73,13 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
 
   const companies: Company[] = snapshot.companies.map((row) => {
     const lead = leadsByCompany.get(row.id);
+    const qualification = researchAnalysisSchema.shape.lead.safeParse(row.qualification);
     return {
       id: row.id,
       workflowId: row.workflow_id,
+      workflowResearchStatuses: Object.fromEntries(snapshot.workflowCompanies
+        ? snapshot.workflowCompanies.filter((link) => link.company_id === row.id).map((link) => [link.workflow_id, link.research_status])
+        : row.workflow_id ? [[row.workflow_id, row.research_status]] : []),
       name: row.name,
       website: safePublicUrl(row.website),
       industry: row.industry ?? "Unclassified",
@@ -82,10 +87,16 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       description: row.description ?? "A company description is not available yet.",
       employeeEstimate: row.employee_estimate ?? "Not recorded",
       sourceUrls: row.source_urls.map(safePublicUrl).filter((url): url is string => url !== null),
+      sources: row.sources ?? [],
+      automationOpportunities: row.automation_opportunities?.map((opportunity) => ({ category: opportunity.category, title: opportunity.title,
+        explanation: opportunity.explanation, evidence: (opportunity.evidence ?? []).filter((url) => safePublicUrl(url)) })) ?? [],
+      scoreComponents: qualification.success ? qualification.data.components : undefined,
+      scoreReason: qualification.success ? qualification.data.scoreReason : lead?.score_reason ?? undefined,
+      qualificationConfidence: qualification.success ? qualification.data.confidence : lead?.confidence ?? undefined,
       researchSummary: row.research_summary ?? "Research has not been completed.",
       researchStatus: row.research_status,
-      opportunity: lead?.opportunity ?? "No qualified opportunity yet",
-      score: lead?.score ?? null,
+      opportunity: qualification.success ? qualification.data.opportunity : lead?.opportunity ?? "No qualified opportunity yet",
+      score: qualification.success ? qualification.data.score : lead?.score ?? null,
       lastResearchedAt: row.last_researched_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -103,6 +114,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     confidence: row.confidence,
     outreachStatus: row.outreach_status,
     updatedAt: row.updated_at,
+    scoreComponents: row.score_components ?? undefined,
   }));
 
   const approvals: Approval[] = snapshot.approvals.map((row) => {
@@ -146,6 +158,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       : kind === "approval_requested" ? "waiting" as const
       : "completed" as const;
     const durationMs = row.metadata.duration_ms;
+    const companyName = snapshot.companies.find((company) => company.id === row.metadata.company_id)?.name;
     return {
       id: row.id,
       workflowId: row.workflow_id,
@@ -155,7 +168,8 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       title: run && ["agent_started", "agent_completed", "agent_failed"].includes(kind)
         ? `${agentName(run.agent_type)} ${kind.slice(6)}`
         : eventTitles[kind] ?? kind.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()),
-      description: row.summary,
+      description: companyName && ["lead_qualified", "lead_rejected"].includes(kind) && row.summary.startsWith("Company ")
+        ? `${companyName} ${row.summary.slice(8)}` : row.summary,
       timestamp: row.created_at,
       status,
       companyId: stringField(row.metadata, "company_id") ?? undefined,
@@ -168,7 +182,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
   const workflows = snapshot.workflows.map((row) => {
     const relatedLeads = leads.filter((lead) => lead.workflowId === row.id);
     const companyIds = new Set([
-      ...companies.filter((company) => company.workflowId === row.id).map((company) => company.id),
+      ...companies.filter((company) => company.workflowResearchStatuses?.[row.id] || company.workflowId === row.id).map((company) => company.id),
       ...relatedLeads.map((lead) => lead.companyId),
     ]);
     const pendingApprovals = approvals.filter((approval) => approval.workflowId === row.id && approval.status === "pending");
@@ -201,6 +215,8 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     description: row.description,
     order: row.position,
     status: row.status,
+    type: row.type,
+    error: typeof row.error === "object" && row.error !== null && "message" in row.error && typeof row.error.message === "string" ? row.error.message : undefined,
     agent: runsByTask.get(row.id) ? agentName(runsByTask.get(row.id)!.agent_type) : "Unassigned" as const,
     completedAt: row.completed_at ?? undefined,
     ...(context.success ? context.data : {}),
@@ -243,6 +259,13 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
         startedAt: run.started_at, completedAt: run.completed_at, durationMs: run.duration_ms ?? null,
         retryCount: run.retry_count ?? 0, taskCount: run.task_count ?? (plan.success ? plan.data.tasks.length : 0),
         totalTokens: run.total_tokens ?? null, error };
+    }),
+    researchRuns: snapshot.agentRuns.filter((run) => run.agent_type === "researcher").map((run) => {
+      const error = typeof run.error === "object" && run.error !== null && "message" in run.error && typeof run.error.message === "string" ? run.error.message : undefined;
+      const summary = typeof run.output === "object" && run.output !== null && "summary" in run.output && typeof run.output.summary === "string" ? run.output.summary : undefined;
+      return { id: run.id, workflowId: run.workflow_id, taskId: run.workflow_task_id, status: run.status, model: run.model, summary,
+        startedAt: run.started_at, completedAt: run.completed_at, durationMs: run.duration_ms ?? null, retryCount: run.retry_count ?? 0,
+        taskCount: run.task_count ?? 0, totalTokens: run.total_tokens ?? null, error };
     }),
   };
 }

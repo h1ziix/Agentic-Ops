@@ -6,6 +6,7 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { ArrowUpRight, Building2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDemoStore } from "@/components/app/demo-store";
 
 export const entitySelectClass = "h-9 max-w-full rounded-md border border-border bg-card px-3 text-xs text-foreground outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring";
 
@@ -54,5 +55,6 @@ export function EntityLoading({ title }: { title: string }) {
 }
 
 export function DemoSourceNote() {
-  return <p className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-[11px] leading-5 text-muted-foreground"><Building2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />Review source references and verify any claim before external outreach. Seeded profiles are sample data.</p>;
+  const { mode } = useDemoStore();
+  return <p className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-[11px] leading-5 text-muted-foreground"><Building2 aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />{mode === "live" ? "Source references document the public evidence used for this assessment." : "Seeded profiles are sample data for the local preview."}</p>;
 }

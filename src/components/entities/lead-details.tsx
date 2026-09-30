@@ -10,6 +10,8 @@ import { useApprovalDrafts } from "@/components/approvals/use-approval-drafts";
 import { CompanyMark, DemoSourceNote, EntitySection, ScoreRail } from "@/components/entities/entity-ui";
 import { entityDate, outreachLabel, useProspectData } from "@/components/entities/prospect-data";
 import type { Lead } from "@/types/domain";
+import { ScoreBreakdown } from "./score-breakdown";
+import { ResearchSources } from "./research-sources";
 
 export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -36,10 +38,12 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
           <div className="flex items-start justify-between gap-3"><div><p className="mb-3 text-xs font-medium text-muted-foreground">Opportunity fit</p><ScoreRail score={lead.score} detailed /></div><span className="inline-flex items-center gap-1.5 text-[11px] capitalize text-muted-foreground"><ShieldCheck className="size-3.5" />{lead.confidence ? `${lead.confidence} confidence` : "Not assessed"}</span></div>
           <p className="mt-5 text-sm font-medium leading-5">{lead.opportunity}</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">{lead.scoreReason}</p>
+          <div className="mt-4"><ScoreBreakdown components={lead.scoreComponents} /></div>
         </div>
         <EntitySection title="Qualification context" icon={<CheckCheck className="size-4 text-muted-foreground" />}>
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4 text-xs"><div><dt className="text-muted-foreground">Industry</dt><dd className="mt-1.5 text-foreground">{company?.industry ?? "Not available"}</dd></div><div><dt className="text-muted-foreground">Company size</dt><dd className="mt-1.5 text-foreground">{company?.employeeEstimate ?? "Not available"} employees</dd></div><div><dt className="text-muted-foreground">Market</dt><dd className="mt-1.5 text-foreground">{company?.location ?? "Not available"}</dd></div><div><dt className="text-muted-foreground">Research</dt><dd className="mt-1.5 capitalize text-foreground">{company?.researchStatus ?? "Not available"}</dd></div></dl>
         </EntitySection>
+        {company && <EntitySection title="Research sources" icon={<FileText className="size-4 text-muted-foreground" />}><ResearchSources company={company} /></EntitySection>}
         <EntitySection title="Outreach preview" icon={<Mail className="size-4 text-muted-foreground" />}>
           <div className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">Message status</span><StatusBadge status={lead.outreachStatus} label={outreachLabel(lead.outreachStatus)} /></div>
           {proposal && message ? <div className="overflow-hidden rounded-md border border-border"><div className="flex flex-col gap-1 border-b border-border bg-muted/30 px-4 py-3"><p className="text-[11px] text-muted-foreground">To: {proposal.recipientName}</p><p className="text-xs font-medium">{message.subject}</p></div><p className="whitespace-pre-line px-4 py-3 text-xs leading-5 text-muted-foreground">{message.body.split("\n\n").slice(0, 3).join("\n\n")}</p></div> : <p className="text-xs leading-5 text-muted-foreground">{lead.outreachStatus === "sent" ? "Outreach was sent in the seeded demo history. No external messages are sent by this workspace." : "Research is available. Outreach has not been drafted for this opportunity."}</p>}

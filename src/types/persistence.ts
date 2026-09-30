@@ -25,6 +25,7 @@ export interface WorkspaceSnapshot {
   workflows: WorkflowRow[];
   tasks: WorkflowTaskRow[];
   companies: CompanyRow[];
+  workflowCompanies?: { workflow_id: string; company_id: string; research_status: CompanyRow["research_status"] }[];
   leads: LeadRow[];
   agentRuns: AgentRunRow[];
   events: AgentEventRow[];

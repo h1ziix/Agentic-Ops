@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const newWorkflowSchema = z.object({
   goal: z.string().trim().min(24, "Describe the outcome in at least 24 characters.").max(1000, "Keep the goal under 1,000 characters."),
-  targetCompanies: z.number().int().min(5).max(100),
+  targetCompanies: z.number().int().min(1).max(20),
 });
 
 export type NewWorkflowInput = z.infer<typeof newWorkflowSchema>;

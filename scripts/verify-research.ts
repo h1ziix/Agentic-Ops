@@ -1,92 +1,70 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { loadEnvConfig } from "@next/env";
+import { writeFile, mkdir } from "node:fs/promises";
 import { z } from "zod";
 import { createRuntimeClient } from "../src/lib/supabase/admin";
-import { researchOutputSchema, validateResearchAnalysis } from "../src/lib/validation/research";
-import { ResearchRepository, SupabaseResearchCache } from "../src/server/repositories/research-repository";
-import { AgentEventRepository } from "../src/server/repositories/agent-repositories";
-import { AgentRunService } from "../src/server/services/agent-run-service";
-import { EventService } from "../src/server/services/event-service";
-import { AgentRuntime } from "../src/server/agents/agent-runtime";
-import { ResearchAgent } from "../src/server/agents/research-agent";
-import { ResearchOrchestrator } from "../src/server/agents/research-orchestrator";
-import { GeminiProvider } from "../src/server/agents/gemini-provider";
-import { TavilyProvider } from "../src/server/agents/tavily-provider";
-import { getResearchModel } from "../src/server/agents/config";
+import { researchOutputSchema, calculateLeadScore, validateResearchAnalysis } from "../src/lib/validation/research";
+import { normalizeDomain } from "../src/lib/company-identity";
 
 async function verify() {
   loadEnvConfig(process.cwd());
   const args = process.argv.slice(2);
-  const argument = (name: string) => args[args.indexOf(name) + 1];
-  if (!args.includes("--workspace") || !args.includes("--user")) throw new Error("Provide --workspace UUID and --user UUID for the authorized workspace member.");
-  const workspaceId = z.uuid().parse(argument("--workspace"));
-  const userId = z.uuid().parse(argument("--user"));
-  for (const key of ["GEMINI_API_KEY", "TAVILY_API_KEY"]) assert.ok(process.env[key]?.trim(), `${key} must be configured on the server`);
+  if (!args.includes("--workflow")) throw new Error("Create a real workflow from the UI, then provide --workflow UUID to verify persisted execution.");
+  const workflowId = z.uuid().parse(args[args.indexOf("--workflow") + 1]);
   const admin = createRuntimeClient();
-  const membership = await admin.from("workspace_members").select("user_id").eq("workspace_id", workspaceId).eq("user_id", userId).single();
-  if (membership.error || !membership.data) throw new Error("The verification user must belong to the selected workspace.");
-  const goal = "Research Linear using its public website evidence, score its fit for AI workflow automation and prepare personalized outreach for human approval.";
-  const existingWorkflowId = args.includes("--workflow") ? z.uuid().parse(argument("--workflow")) : null;
-  const workflow = existingWorkflowId ? await admin.from("workflows").select("id,goal,title").eq("id", existingWorkflowId).eq("workspace_id", workspaceId).single()
-    : await admin.from("workflows").insert({ workspace_id: workspaceId, created_by: userId,
-      title: "Linear — live research verification", goal, status: "running", target_companies: 1, current_step: "Company supplied for live research verification" }).select("id,goal,title").single();
-  if (workflow.error || !workflow.data) throw new Error("Could not create the verification workflow.");
-  assert.equal(workflow.data.goal, goal); assert.equal(workflow.data.title, "Linear — live research verification");
-  const workflowId = z.uuid().parse(workflow.data.id);
-  const model = getResearchModel();
-  console.log(JSON.stringify({ stage: "live_research_started", workflowId, model, company: "Linear", website: "https://linear.app" }));
-  const events = new EventService(new AgentEventRepository(admin));
-  if (!existingWorkflowId) await events.record({ workspaceId, workflowId, eventType: "workflow_created", summary: "Linear supplied for the requested live research verification", metadata: { source: "manual_verification" } });
-  const agent = new ResearchAgent(new TavilyProvider(), new GeminiProvider(), new SupabaseResearchCache(admin, workspaceId));
-  const orchestrator = new ResearchOrchestrator(new AgentRunService(new ResearchRepository(admin)), events, new AgentRuntime(null, undefined, agent));
-  const result = await orchestrator.researchCompany({ userId, workspaceId, workflowId }, { name: "Linear", website: "https://linear.app", goal,
-    icp: { description: "B2B SaaS product teams that could benefit from AI workflow automation; prioritize software tools with integrations and evidence of repeatable team workflows.",
-      offering: "Agentic Ops provides evidence-based AI sales research and personalized outreach drafts with human approval before outbound actions." } }, model);
-  assert.equal(result.status, "awaiting_approval");
-  const [run, company, lead, approval, actions, savedWorkflow, savedEvents] = await Promise.all([
-    admin.from("agent_runs").select("*").eq("id", result.runId).single(),
-    admin.from("companies").select("*").eq("workflow_id", workflowId).single(),
-    admin.from("leads").select("*").eq("workflow_id", workflowId).single(),
-    admin.from("approvals").select("*").eq("workflow_id", workflowId).single(),
-    admin.from("proposed_actions").select("*").eq("workflow_id", workflowId),
-    admin.from("workflows").select("status").eq("id", workflowId).single(),
-    admin.from("agent_events").select("event_type,summary,metadata,created_at").eq("workflow_id", workflowId).order("created_at"),
+  const workflow = await admin.from("workflows").select("*").eq("id", workflowId).single();
+  assert.equal(workflow.error, null);
+  const workspaceId = z.uuid().parse(workflow.data?.workspace_id);
+  const [tasks, runs, companies, leads, approvals, actions, events] = await Promise.all([
+    admin.from("workflow_tasks").select("*").eq("workflow_id", workflowId).order("position"),
+    admin.from("agent_runs").select("*").eq("workflow_id", workflowId).order("created_at"),
+    admin.from("workflow_companies").select("*,companies(*)").eq("workflow_id", workflowId),
+    admin.from("leads").select("*").eq("workflow_id", workflowId),
+    admin.from("approvals").select("id").eq("workflow_id", workflowId),
+    admin.from("proposed_actions").select("id").eq("workflow_id", workflowId),
+    admin.from("agent_events").select("*").eq("workflow_id", workflowId).order("created_at"),
   ]);
-  for (const response of [run, company, lead, approval, actions, savedWorkflow, savedEvents]) assert.equal(response.error, null);
-  const output = researchOutputSchema.parse(run.data?.output); validateResearchAnalysis(output.analysis, output.sources);
-  const liveQueries = savedEvents.data?.filter((event) => event.event_type === "tool_completed" && event.metadata.tool_name === "tavily_search" && event.metadata.cached === 0);
-  assert.ok(liveQueries?.length, "Live verification requires actual Tavily searches in this workflow's trace");
-  assert.ok(output.sources.length > 0); assert.ok(output.budget.modelRequests > 0);
-  assert.deepEqual(company.data?.source_urls, output.sources.map((source) => source.url));
-  assert.equal(lead.data?.score, output.analysis.lead.score); assert.equal(lead.data?.outreach_status, "waiting_approval");
-  assert.equal(approval.data?.status, "pending"); assert.equal(savedWorkflow.data?.status, "waiting_for_approval");
-  assert.equal(actions.data?.length, 1); assert.equal(actions.data?.[0].status, "waiting_for_approval"); assert.equal(actions.data?.[0].executed_at, null);
-  assert.equal(actions.data?.[0].payload.body, output.analysis.outreach.body);
-  const before = savedEvents.data?.length;
-  const replay = await orchestrator.researchCompany({ userId, workspaceId, workflowId }, { name: "Linear", website: "https://linear.app", goal,
-    icp: { description: "B2B SaaS product teams that could benefit from AI workflow automation; prioritize software tools with integrations and evidence of repeatable team workflows.",
-      offering: "Agentic Ops provides evidence-based AI sales research and personalized outreach drafts with human approval before outbound actions." } }, model);
-  assert.equal(replay.runId, result.runId);
-  const replayEvents = await admin.from("agent_events").select("id", { count: "exact", head: true }).eq("workflow_id", workflowId);
-  assert.equal(replayEvents.count, before, "Idempotent replay must not call providers or append events");
-  const report = { verifiedAt: new Date().toISOString(), workflowId, runId: result.runId, model, ...output,
-    tavilyQueriesPerformed: liveQueries?.map((event) => event.metadata.query), resumedFromCachedEvidence: Boolean(existingWorkflowId),
-    savedCompany: company.data, savedLead: lead.data, approvalId: approval.data?.id, approvalStatus: approval.data?.status,
-    workflowStatus: savedWorkflow.data?.status, actionStatus: actions.data?.[0].status, executedAt: actions.data?.[0].executed_at,
-    metrics: { durationMs: run.data?.duration_ms, totalTokens: run.data?.total_tokens, retries: run.data?.retry_count },
-    idempotentReplayVerified: true, events: savedEvents.data };
-  const directory = path.resolve("output/research"); await mkdir(directory, { recursive: true });
-  const file = path.join(directory, "linear-verification.json"); await writeFile(file, JSON.stringify(report, null, 2) + "\n");
-  console.log(JSON.stringify({ stage: "live_research_verified", report: file, model, queries: output.queries, sources: output.sources.map((source) => source.url),
-    company: output.analysis.company, icp: output.analysis.icp, lead: output.analysis.lead, outreach: output.analysis.outreach,
-    approvalStatus: report.approvalStatus, workflowStatus: report.workflowStatus, budget: output.budget, metrics: report.metrics, idempotentReplayVerified: true }, null, 2));
+  for (const response of [tasks, runs, companies, leads, approvals, actions, events]) assert.equal(response.error, null);
+  assert.ok(runs.data?.some((run) => run.agent_type === "planner" && run.status === "completed"));
+  const researchRuns = runs.data?.filter((run) => run.agent_type === "researcher") ?? [];
+  assert.ok(researchRuns.length);
+  const results = researchRuns.flatMap((run) => {
+    if (run.status !== "completed" || !run.output?.result) return [];
+    const result = researchOutputSchema.parse(run.output.result);
+    validateResearchAnalysis(result.analysis, result.sources);
+    assert.equal(result.analysis.lead.score, calculateLeadScore(result.analysis.lead.components));
+    return [{ companyId: run.input.companyId, result }];
+  });
+  assert.ok(results.length, "Expected real persisted company research");
+  assert.ok(events.data?.some((event) => event.event_type === "tool_completed" && event.metadata.tool_name === "tavily_search" && event.metadata.cached === 0), "Expected real web research, not only cached evidence");
+  const supported = ["define_target_profile", "discover_companies", "research_companies", "identify_opportunities", "score_leads"];
+  assert.ok(tasks.data?.filter((task) => supported.includes(task.type)).every((task) => task.status === "completed"));
+  assert.ok(tasks.data?.filter((task) => !supported.includes(task.type)).every((task) => task.status === "pending"));
+  assert.equal(approvals.data?.length, 0); assert.equal(actions.data?.length, 0);
+  assert.ok(leads.data?.length, "Expected at least one real qualified lead");
+  assert.ok(["paused", "completed"].includes(workflow.data?.status));
+  assert.equal(workflow.data?.progress, Math.floor(100 * (tasks.data?.filter((task) => task.status === "completed").length ?? 0) / (tasks.data?.length ?? 1)));
+  for (const lead of leads.data ?? []) {
+    assert.equal(lead.workspace_id, workspaceId); assert.equal(lead.status, "qualified"); assert.equal(lead.outreach_status, "not_started");
+    assert.ok(lead.score >= 0 && lead.score <= 100); assert.ok(lead.score_reason); assert.ok(lead.confidence); assert.ok(lead.opportunity);
+    assert.equal(lead.score, calculateLeadScore(lead.score_components));
+  }
+  assert.equal(new Set((leads.data ?? []).map((lead) => lead.company_id)).size, leads.data?.length);
+  for (const { companyId, result } of results) {
+    const company = companies.data?.find((item) => item.company_id === companyId)?.companies;
+    assert.ok(company); assert.equal(company.research_status, "researched");
+    assert.deepEqual(company.source_urls, result.sources.map((source) => source.url));
+    assert.equal(company.sources.length, result.sources.length); assert.ok(company.last_researched_at);
+  }
+  const domains = (companies.data ?? []).filter((item) => item.companies.website)
+    .map((item) => normalizeDomain(item.companies.website));
+  assert.equal(new Set(domains).size, domains.length);
+  const report = { verifiedAt: new Date().toISOString(), workflow: workflow.data, tasks: tasks.data,
+    companies: companies.data, leads: leads.data, runs: runs.data, events: events.data,
+    checks: { sourcesPersisted: true, rubricVerified: true, noOutreachGenerated: true, noApprovalsCreated: true, domainDeduplication: true, actualTaskProgress: true } };
+  await mkdir("output/research", { recursive: true });
+  await writeFile("output/research/stage4-verification.json", JSON.stringify(report, null, 2) + "\n");
+  console.log(JSON.stringify({ workflowId, researched: results.length, qualifiedLeads: leads.data?.length,
+    progress: workflow.data?.progress, status: workflow.data?.status, researchRuns: researchRuns.length, checks: report.checks }));
 }
-
-verify().catch((error: unknown) => {
-  // Never print raw provider, auth or database responses.
-  console.error("Live research verification failed", { code: error instanceof Error && "code" in error ? error.code : "verification_failed",
-    message: error instanceof Error ? error.message : "Verification could not be completed" });
-  process.exitCode = 1;
-});
+verify().catch((error: unknown) => { console.error("Stage 4 verification failed", { message: error instanceof Error ? error.message : "Verification failed" }); process.exitCode = 1; });

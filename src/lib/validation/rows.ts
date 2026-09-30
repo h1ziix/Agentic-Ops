@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { taskStatusSchema, workflowStatusSchema } from "./workflow";
 import { agentStatusSchema, agentTypeSchema } from "./agent";
+import { storedSourceSchema, automationOpportunitySchema, scoreComponentsSchema } from "./research";
 
 const id = z.uuid();
 const timestamp = z.string();
@@ -65,6 +66,11 @@ export const companyRowSchema = z.object({
   research_summary: z.string().nullable(),
   research_status: z.enum(["queued", "researching", "researched", "failed"]),
   source_urls: z.array(z.string()),
+  sources: z.array(storedSourceSchema).optional(),
+  automation_opportunities: z.array(automationOpportunitySchema.extend({ evidence: z.array(z.string()).optional() })).optional(),
+  qualification: z.unknown().nullable().optional(),
+  normalized_domain: z.string().nullable().optional(),
+  normalized_name: z.string().nullable().optional(),
   last_researched_at: nullableTimestamp,
   created_at: timestamp,
   updated_at: timestamp,
@@ -81,6 +87,7 @@ export const leadRowSchema = z.object({
   opportunity: z.string().nullable(),
   confidence: z.enum(["high", "medium", "low"]).nullable(),
   outreach_status: z.enum(["not_started", "drafted", "waiting_approval", "approved", "sent"]),
+  score_components: scoreComponentsSchema.nullable().optional(),
   created_at: timestamp,
   updated_at: timestamp,
 });
@@ -114,6 +121,7 @@ export const agentEventTypeSchema = z.enum([
   "task_started", "task_completed", "task_failed",
   "tool_called", "tool_completed", "tool_failed",
   "company_discovered", "company_researched", "lead_scored",
+  "research_started", "company_research_started", "company_research_failed", "lead_qualified", "lead_rejected",
   "approval_requested", "approval_approved", "approval_rejected",
   "execution_started", "execution_completed", "execution_failed", "error", "retry",
 ]);

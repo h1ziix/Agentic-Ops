@@ -1,4 +1,4 @@
-import { researchCompany } from "@/server/services/research-service";
+import { researchWorkflow } from "@/server/services/research-service";
 import { researchRequestSchema } from "@/lib/validation/research";
 import { AppError } from "@/server/errors";
 
@@ -12,9 +12,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (Number(request.headers.get("content-length")) > 16_384) throw new AppError("validation");
     const body = await request.text();
     if (body.length > 16_384) throw new AppError("validation");
-    const parsed = researchRequestSchema.safeParse(JSON.parse(body));
+    const parsed = researchRequestSchema.safeParse(body ? JSON.parse(body) : {});
     if (!parsed.success) throw new AppError("validation");
-    return Response.json(await researchCompany(id, parsed.data));
+    return Response.json(await researchWorkflow(id, parsed.data), { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof SyntaxError) return Response.json({ error: "Invalid research request." }, { status: 400 });
     if (error instanceof AppError) {

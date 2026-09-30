@@ -15,7 +15,7 @@ export async function getWorkspaceSnapshot(workspaceId?: string): Promise<Worksp
   const eventRepository = new AgentEventRepository(supabase);
   const approvalRepository = new ApprovalRepository(supabase);
 
-  const [workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions] = await Promise.all([
+  const [workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions, workflowCompanies] = await Promise.all([
     workflowRepository.listWorkspaceWorkflows(workspace.id),
     workflowRepository.listWorkflowTasks(workspace.id),
     companyRepository.listWorkspaceCompanies(workspace.id),
@@ -24,7 +24,8 @@ export async function getWorkspaceSnapshot(workspaceId?: string): Promise<Worksp
     eventRepository.listWorkspaceEvents(workspace.id),
     approvalRepository.listWorkspaceApprovals(workspace.id),
     approvalRepository.listWorkspaceProposedActions(workspace.id),
+    companyRepository.listWorkflowAssociations(workspace.id),
   ]);
 
-  return { workspace, workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions };
+  return { workspace, workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions, workflowCompanies };
 }

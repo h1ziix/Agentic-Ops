@@ -27,7 +27,7 @@ test("structured analysis rejects fabricated evidence, unknown citations, unsupp
   assert.deepEqual(validateResearchAnalysis(researchAnalysis, researchSources), researchAnalysis);
   for (const mutate of [
     (value: typeof researchAnalysis) => { value.facts[0].quote = "Invented employee count"; },
-    (value: typeof researchAnalysis) => { value.outreach.sourceIds = ["source_99"]; },
+    (value: typeof researchAnalysis) => { value.lead.sourceIds = ["source_99"]; },
     (value: typeof researchAnalysis) => { value.lead.score = 100; },
   ]) {
     const value = structuredClone(researchAnalysis); mutate(value);
@@ -56,7 +56,7 @@ test("cache replay avoids all Tavily calls and sends only normalized evidence to
   const measured = metrics();
   const output = await agent.research(researchInput, "gemini-fixture", async () => {}, measured);
   assert.equal(searches, 0); assert.equal(models, 1); assert.equal(output.budget.cacheHits, 2);
-  assert.equal(output.approvalRequired, true); assert.equal(measured.totalTokens, 30);
+  assert.equal(output.researchOnly, true); assert.equal(measured.totalTokens, 30);
 });
 
 test("search cache is persisted before Gemini fails, and the retry reuses evidence", async () => {
@@ -88,4 +88,18 @@ test("empty searches cannot trigger analysis, and an audit failure prevents prov
   assert.equal(models, 0);
   await assert.rejects(() => agent.research(researchInput, "gemini-fixture", async () => { throw new Error("Audit unavailable"); }, metrics()));
   assert.equal(searches, 2);
+});
+
+
+test("directory candidates resolve a website from actual evidence before analysis within two model calls", async () => {
+  let searches = 0; let resolves = 0; let analyses = 0;
+  const agent = new ResearchAgent({ search: async (_query, domain) => { searches++; if (searches === 1) assert.equal(domain,null); else assert.equal(domain,"fixture.example.com"); return researchSources; } },
+    { analyze: async (input) => { analyses++; assert.equal(input.website,"https://fixture.example.com"); return {output:researchAnalysis,usage:null}; } },
+    {get:async()=>null,set:async()=>{}},async()=>{}, {
+      profile:async()=>{throw new Error("Unexpected profile call");}, discover:async()=>{throw new Error("Unexpected discovery call");},
+      resolve:async()=>{resolves++; return {output:{summary:"Verified official domain",candidates:[{name:"Fixture SaaS",website:"https://fixture.example.com",sourceId:"source_1",quote:"helps software teams manage their projects"}]},usage:null};},
+    });
+  const result = await agent.research({...researchInput,website:null,location:"Kazakhstan"},"gemini-fixture",async()=>{},metrics());
+  assert.equal(searches,2); assert.equal(resolves,1); assert.equal(analyses,1); assert.equal(result.budget.modelRequests,2);
+  assert.equal(result.company.website,"https://fixture.example.com"); assert.equal(result.researchOnly,true);
 });

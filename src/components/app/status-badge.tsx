@@ -5,6 +5,7 @@ type StatusBadgeProps = { status: string; label?: string; className?: string };
 const statusLabels: Record<string, string> = {
   running: "Running",
   planning: "Planning",
+  paused: "Paused",
   waiting_for_approval: "Waiting approval",
   waiting_approval: "Waiting approval",
   ready_for_execution: "Ready for execution",

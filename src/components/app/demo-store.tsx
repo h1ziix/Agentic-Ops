@@ -8,7 +8,7 @@ import { resolveApprovalAction } from "@/app/actions/approvals";
 import type { ActionContentEdit } from "@/lib/validation/approval";
 import { newWorkflowSchema, type NewWorkflowInput } from "@/lib/validation/workflow";
 import { agentActivity, approvals as seedApprovals, companies as seedCompanies, demoWorkspace, leads as seedLeads, workflowStages as seedStages, workflowTasks as seedTasks, workflows as seedWorkflows } from "@/lib/mock-data";
-import type { AgentEvent, Approval, ApprovalStatus, Company, Lead, PlannerRun, Workflow, WorkflowStage, WorkflowTask, Workspace, WorkspaceViewData } from "@/types/domain";
+import type { AgentEvent, Approval, ApprovalStatus, Company, Lead, PlannerRun, ResearchRun, Workflow, WorkflowStage, WorkflowTask, Workspace, WorkspaceViewData } from "@/types/domain";
 
 export { newWorkflowSchema } from "@/lib/validation/workflow";
 
@@ -38,6 +38,7 @@ type DemoStore = {
   approvals: Approval[];
   activity: AgentEvent[];
   plannerRuns: PlannerRun[];
+  researchRuns: ResearchRun[];
   updateWorkflow: (view: WorkspaceViewData) => void;
   createWorkflow: (input: NewWorkflowInput) => Promise<string>;
   setApprovalStatus: (id: string, status: "approved" | "rejected", edits?: ActionContentEdit[]) => Promise<void>;
@@ -107,6 +108,12 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
         return updated && (!server || updated.updatedAt >= server.updatedAt);
       });
       const ids = new Set(updates.flatMap((view) => view.workflows.map((workflow) => workflow.id)));
+      const updatedCompanies = new Map(initialData.companies.map((company) => [company.id, company]));
+      for (const company of updates.flatMap((view) => view.companies)) {
+        const previous = updatedCompanies.get(company.id);
+        updatedCompanies.set(company.id, { ...previous, ...company,
+          workflowResearchStatuses: { ...previous?.workflowResearchStatuses, ...company.workflowResearchStatuses } });
+      }
       return {
       ...initialData,
       workflows: [...updates.flatMap((view) => view.workflows), ...initialData.workflows.filter((row) => !ids.has(row.id))],
@@ -114,6 +121,9 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       workflowStages: [...updates.flatMap((view) => view.workflowStages), ...initialData.workflowStages.filter((row) => !ids.has(row.workflowId))],
       activity: [...updates.flatMap((view) => view.activity), ...initialData.activity.filter((row) => !ids.has(row.workflowId))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
       plannerRuns: [...updates.flatMap((view) => view.plannerRuns ?? []), ...(initialData.plannerRuns ?? []).filter((row) => !ids.has(row.workflowId))],
+      researchRuns: [...updates.flatMap((view) => view.researchRuns ?? []), ...(initialData.researchRuns ?? []).filter((row) => !ids.has(row.workflowId))],
+      companies: [...updatedCompanies.values()],
+      leads: [...updates.flatMap((view) => view.leads), ...initialData.leads.filter((row) => !ids.has(row.workflowId))],
       updateWorkflow: (view) => setWorkflowUpdates((current) => ({ ...current, [view.workflows[0].id]: view })),
       mode: "live",
       hydrated: true,
@@ -194,6 +204,7 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       approvals,
       activity: [...createdEvents, ...decisionEvents, ...agentActivity].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
       plannerRuns: [],
+      researchRuns: [],
       updateWorkflow: () => {},
       createWorkflow: async (input) => {
         const valid = newWorkflowSchema.parse(input);

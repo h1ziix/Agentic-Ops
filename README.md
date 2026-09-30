@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. A supplied company becomes Tavily evidence, a validated Gemini analysis, ICP and lead scores, and a personalized outreach proposal awaiting human approval. Approving a proposal records a decision; it does not execute the action.
+Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. Release 0.4 turns a goal into a validated plan, focused company discovery, Tavily evidence, Gemini analysis, explainable lead scores, and persisted qualified leads. Research stops after qualification; future outreach and approval tasks remain pending. Historical proposals remain readable.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.e
 
 Set `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, and `AI_PROVIDER=gemini` on the server. Legacy Supabase projects may use `SUPABASE_SERVICE_ROLE_KEY` instead of `SUPABASE_SECRET_KEY`. These credentials are imported through server-only modules and must never have a `NEXT_PUBLIC_` prefix. Supabase's [secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) authorize the service-role writer. Cookie-bound reads verify identity and workspace membership before the runtime writer is constructed; the runtime RPCs also check the supplied verified user's membership.
 
-`GEMINI_MODEL` optionally overrides the default `gemini-3.5-flash-lite` for research and Gemini planning. The model must support JSON Schema structured output. The existing OpenAI Planner remains available with `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optional `OPENAI_PLANNER_MODEL` (default `gpt-4.1-mini`). Research uses Gemini regardless of the planning provider. Model configuration lives in `src/server/agents/config.ts`; research limits live in `research-budget.ts`.
+`PLANNER_MODEL` and `RESEARCH_MODEL` independently override the models. `GEMINI_MODEL` provides a shared Gemini fallback (default `gemini-3.5-flash-lite`). The model must support JSON Schema structured output. The existing OpenAI Planner remains available with `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optional `OPENAI_PLANNER_MODEL` (default `gpt-4.1-mini`). Research uses Gemini regardless of the planning provider. Model configuration lives in `src/server/agents/config.ts`; research limits live in `research-budget.ts`.
 
 ## Apply the database schema
 
@@ -117,32 +117,36 @@ npx supabase@latest db query --linked --file supabase/tests/planner_runtime.sql
 
 All SQL fixtures are created inside a transaction and rolled back. This suite makes no OpenAI requests. `npm run verify:client-secrets` scans production browser assets for the configured server secrets and fails without printing their values.
 
-For manual end-to-end verification, sign in and create a workflow with: “Find 20 SaaS companies in Kazakhstan that could benefit from AI automation and prepare personalized outreach. Do not send anything without approval.” Check planning progress, completed Planner run, pending task details, trace and refresh persistence. To verify the missing-key path, temporarily remove only `OPENAI_API_KEY` from the development server environment, create a separate test workflow, restore the key, then use **Retry planning**. No research or outbound action is executed.
+For manual end-to-end verification, sign in and create a workflow with the example goal in the workflow dialog. Set the requested company count explicitly. Check planning, running research, partial results, trace, qualification, and persistence after refreshing. Provider failures surface safe errors and an explicit retry; successful results are retained. Tests use mocked providers and do not call paid APIs.
 
-## Company research pipeline
+## Stage 4 research execution
 
-`POST /api/workflows/:id/research` accepts either `{ "companyId": "UUID" }` for a saved company or `{ "name": "Linear", "website": "https://linear.app" }`. The workflow must be running or waiting for approval. Optional `icp` contains `description` and `offering`; otherwise the workflow goal supplies the ICP and Agentic Ops sales research supplies the offering. The endpoint requires a same-origin request, a verified Supabase session, and workspace membership. Company IDs cannot cross workflows or workspaces.
+`POST /api/workflows/:id/research` accepts `{}` or `{ "retry": true }`. The endpoint verifies the same-origin request, Supabase session, workspace membership, workflow state and task dependencies before any paid request. It extends the existing Orchestrator, AgentRuntime, AgentRunService and EventService. It executes one bounded task or company per request. The visible workflow detail screen continues requests sequentially and polls persisted state; reopening an unfinished workflow resumes execution. This release has no background worker, so navigating away stops continuation after the current request.
 
-The server uses the existing `AgentRuntime`, `AgentRunService`, `EventService`, and Supabase service-role RPC pattern. It requests two domain-scoped Tavily basic searches with automatic search upgrades and generated answers disabled. Results are deduplicated, bounded, validated, and cached in a server-only, workspace-scoped Supabase table for 24 hours. Original source URLs and retrieval timestamps are preserved. Cache writes occur before analysis, so a failed Gemini request can reuse evidence on explicit retry.
+Only `define_target_profile`, `discover_companies`, `research_companies`, `identify_opportunities`, and `score_leads` execute. Other planned tasks remain pending. Completion pauses the workflow at the research boundary when future tasks exist, or completes it when all tasks are supported. Progress is the percentage of actual completed tasks.
 
-Gemini receives only the supplied goal, ICP and normalized Tavily snippets. It has no browsing tools. Zod validates the profile, quoted facts, score components, uncertainties, and outreach. Citation IDs must refer to supplied evidence, quotes must appear in its snippets, and score components must sum correctly. Unknown location and employee counts remain null; unverified sales needs are hypotheses. An ICP score and a lead score are estimates against the supplied criteria, not proof of buying intent.
+The existing Tavily and Gemini adapters remain server-only. Discovery uses 2–3 focused queries and extracts at most the requested number of source-supported companies. Directory candidates may have an unknown website; an additional focused identity lookup must establish a supported official domain before research. Domain-scoped company searches collect bounded snippets. Original URLs and retrieval times are retained in a workspace-scoped, server-only cache for 24 hours. Cache writes precede analysis so retries reuse search evidence.
 
-Each research run allows at most two search queries, three Tavily HTTP attempts/basic-credit reservations, two Gemini requests, and one retry shared across both providers. Each search returns at most four results, with at most eight sources and 3,500 characters per snippet. Gemini output is capped at 6,000 tokens per attempt, and provider execution has a 170-second budget. HTTP 429/5xx responses use bounded retry delays; `Retry-After` and Gemini `RetryInfo` are honored. Long delays, configuration failures, and exhausted quotas fail safely. Every retry consumes the same run budget.
+Gemini sees goals, ICP and snippets as untrusted data, with no command execution or independent browsing tools. Zod validates profiles, facts, exact evidence quotes, citation IDs, opportunities, URLs and qualification. Unknown fields stay null. Opportunities are hypotheses rather than verified customer requirements. Only cited sources persist with the company. No contacts, outreach content, approval proposals or external actions are generated.
 
-`start_research_run` serializes claims under the workflow lock. `complete_research_run` atomically saves the company profile and URLs, lead score, complete evidence/analysis in the Agent Run, outreach proposal, pending approval and audit events. It transitions the workflow to `waiting_for_approval`. Replaying the same request returns its existing run without provider calls or duplicate proposals. Interrupted claims expire after three minutes; cancellation blocks late results. Reviewed or sent outreach cannot be overwritten. No email provider, CRM writer, or outbound executor is implemented. Recipient details must be verified by a human.
+The rubric totals 100: ICP fit 25, automation potential 30, operational signals 20, evidence quality 15, and public reachability/context 10. Server validation checks component bounds and their sum. Qualification requires at least 60 overall, 15 ICP-fit points and 7 evidence-quality points. Confidence reflects evidence quality and is reduced when support is weak. Only qualified assessments create or update leads, initially `qualified` with outreach `not_started`.
 
-This endpoint starts from a known company; broad company discovery and batch scheduling remain separate stages. Research events and records appear through existing workspace views without frontend changes.
+`MAX_RESEARCH_COMPANIES_PER_WORKFLOW` sets a hard ceiling (default 20, supported range 1–20). Discovery is capped at 30 evidence sources and 12 results per broad search. Each company run permits at most two search queries, three Tavily HTTP attempts/basic-credit reservations, two Gemini requests and one shared transient retry. Company searches return four results each, at most eight sources with 3,500 characters per snippet. Provider execution has a 170-second budget; each Gemini response allows at most 6,000 output tokens. Failed attempts consume the same budget. Invalid evidence and configuration/authentication failures are not automatically retried. Explicit company recovery is capped at three failed attempts per work item and 70 research runs per workflow.
 
-Run database regressions (fixtures roll back, no paid calls):
+`start_research_task_run` claims work under workflow and task locks. Concurrent requests reuse one active run; successful replay makes no paid request. Interrupted claims expire after three minutes. `complete_research_task_run` atomically persists profiles, workflow-company associations, source objects, opportunities, qualification, runs and events. Normalized domains take precedence in deduplication; name fallback applies when a website is unknown. Companies are reusable across workflows. One company's evidence failure does not discard successful results. All-company failure stops the task for explicit recovery. Late responses cannot overwrite a cancelled or paused workflow. Legacy RPCs that created outreach no longer grant execution to the runtime writer.
+
+Companies and Leads show saved evidence and assessments. Their detail sheets expose source links, timestamps, confidence and rubric components. Workflow task state, research metrics and the audit trail reflect actual database writes; safe summaries never expose hidden reasoning.
+
+Run database regressions against a migrated development project (fixtures roll back, no paid calls):
 
 ```powershell
 npx supabase@latest db query --linked --file supabase/tests/research_runtime.sql
 ```
 
-Run the explicit **paid, real** Linear verification with an existing workspace member:
+After a **paid, real** workflow is created and executed from the UI, verify its persisted results without making further provider calls:
 
 ```powershell
-npm run verify:research -- --workspace WORKSPACE_UUID --user USER_UUID
+npm run verify:research -- --workflow WORKFLOW_UUID
 ```
 
-The script uses the production server providers and orchestrator, creates one real workflow in that workspace, asserts persistence and the pending approval, and verifies replay without new provider calls. Add `--workflow WORKFLOW_UUID` to resume the same verification after a provider failure, using its cached Tavily evidence. It writes `output/research/linear-verification.json` with queries, sources, model, profile, scores, draft, metrics, and trace. It never approves or sends the proposal. Unit tests use fixtures; this manual verification has no mocked providers. Run typecheck, lint, tests, build, and `verify:client-secrets` afterward.
+This verifies completed planning/research tasks, actual web-search events, researched companies, qualified leads, score components, citations, deduplication, task progress and the absence of outreach/approvals. It writes `output/research/stage4-verification.json` for local inspection. Keep generated reports out of source control. Finish with typecheck, lint, tests, build and `verify:client-secrets`.

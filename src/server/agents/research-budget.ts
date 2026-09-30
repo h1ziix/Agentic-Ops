@@ -11,9 +11,15 @@ export class ResearchError extends AppError {
       ai_quota_exhausted: `${provider} quota is exhausted. Check provider billing before retrying.`,
       ai_unavailable: `${provider} is temporarily unavailable or rate limited. Please retry later.`,
       ai_timeout: `${provider} research request timed out. Please retry later.`,
-      ai_invalid_output: `${provider} returned invalid or unsupported research evidence. No outreach was approved.`,
+      ai_invalid_output: `${provider} returned invalid or unsupported research evidence. Please review the failed item before retrying.`,
       validation: "The research budget was exhausted. No outbound action was performed.", })[code]);
   }
+}
+
+export function researchCompanyLimit(requested: number): number {
+  const override = Number(process.env.MAX_RESEARCH_COMPANIES_PER_WORKFLOW ?? 20);
+  const ceiling = Number.isInteger(override) && override > 0 ? Math.min(override, 20) : 20;
+  return Math.min(requested, ceiling);
 }
 
 /** Conservative credit reservations include failed requests and retries. */

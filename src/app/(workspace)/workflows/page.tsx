@@ -21,6 +21,7 @@ type SortMode = "activity" | "created";
 const statuses: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All statuses" }, { value: "planning", label: "Planning" },
   { value: "running", label: "Running" }, { value: "waiting_for_approval", label: "Waiting approval" },
+  { value: "paused", label: "Paused / research complete" },
   { value: "ready_for_execution", label: "Ready for execution" }, { value: "needs_revision", label: "Needs revision" },
   { value: "completed", label: "Completed" }, { value: "failed", label: "Failed" },
   { value: "draft", label: "Draft" }, { value: "cancelled", label: "Cancelled" },

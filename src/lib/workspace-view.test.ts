@@ -48,3 +48,17 @@ test("failed planning displays an error stage and correctly categorizes workflow
   assert.equal(view.plannerRuns?.[0].error, "Planning timed out.");
   assert.equal(view.workflows[0].errorSummary, "Planning failed.");
 });
+
+test("a canonical company belongs to every associated workflow after refresh", () => {
+  const data = snapshot(); const companyId = randomUUID(); const originalWorkflow = randomUUID(); const now = data.workflows[0].created_at;
+  data.companies.push({ id:companyId,workspace_id:data.workspace.id,workflow_id:originalWorkflow,name:"Canonical SaaS",website:"https://example.com",
+    industry:null,location:null,description:null,employee_estimate:null,research_summary:null,research_status:"researched",source_urls:[],
+    last_researched_at:now,created_at:now,updated_at:now });
+  data.workflowCompanies = [{workflow_id:originalWorkflow,company_id:companyId,research_status:"researched"},
+    {workflow_id:data.workflows[0].id,company_id:companyId,research_status:"failed"}];
+  const view = toWorkspaceView(data);
+  assert.equal(view.workflows[0].companyCount,1);
+  assert.equal(view.companies.length,1);
+  assert.equal(view.companies[0].workflowResearchStatuses?.[data.workflows[0].id],"failed");
+  assert.equal(view.companies[0].workflowResearchStatuses?.[originalWorkflow],"researched");
+});

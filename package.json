@@ -1,6 +1,6 @@
 {
   "name": "agentic-ops",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify:client-secrets": "node scripts/verify-client-secrets.mjs",
-    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-providers.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts",
+    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-execution.test.ts src/server/agents/research-providers.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts",
     "verify:research": "tsx --conditions=react-server scripts/verify-research.ts"
   },
   "dependencies": {

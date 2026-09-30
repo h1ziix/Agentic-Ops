@@ -9,6 +9,7 @@ next-env.d.ts
 .DS_Store
 .playwright-cli/
 output/playwright/
+output/research/
 output/*.log
 supabase/.temp/
 supabase/.branches/

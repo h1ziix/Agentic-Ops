@@ -11,6 +11,7 @@ import { AgentRuntime } from "./agent-runtime";
 import { getPlannerModel } from "./config";
 import { safePlanningError } from "./errors";
 import { PLANNER_PROMPT_VERSION } from "./planner-prompt";
+import { executeResearchStep, type ResearchExecutionStore } from "./research-orchestrator";
 
 export interface PlanningReader {
   getWorkflowById(workspaceId: string, workflowId: string): Promise<WorkflowRow | null>;
@@ -29,7 +30,14 @@ export class Orchestrator {
     private readonly runs: AgentRunService,
     private readonly events: EventService,
     private readonly runtime: AgentRuntime,
+    private readonly researchStore?: ResearchExecutionStore,
   ) {}
+
+  async researchWorkflow(request: PlanWorkflowInput & { retry?: boolean }) {
+    if (!requestSchema.safeParse({ workflowId: request.workflowId, workspaceId: request.workspaceId, userId: request.userId }).success) throw new AppError("validation");
+    if (!this.researchStore) throw new AppError("ai_configuration");
+    return executeResearchStep(request, this.reader, this.runs, this.events, this.runtime, this.researchStore);
+  }
 
   async planWorkflow(request: PlanWorkflowInput): Promise<PlanningResult> {
     const parsed = requestSchema.safeParse(request);

@@ -6,7 +6,7 @@ import { PlannerError } from "./errors";
 import { PlannerAgent } from "./planner-agent";
 import type { TokenUsage } from "./planner-agent";
 import type { ResearchAgent } from "./research-agent";
-import type { ResearchInput } from "@/lib/validation/research";
+import type { ResearchInput, WorkflowResearchInput, TargetProfile } from "@/lib/validation/research";
 
 export type RuntimeEvent = (type: AgentEventType, summary: string, metadata: Record<string, string | number>) => Promise<void>;
 
@@ -14,6 +14,15 @@ export type RuntimeEvent = (type: AgentEventType, summary: string, metadata: Rec
 export class AgentRuntime {
   constructor(private readonly planner: PlannerAgent | null, private readonly wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
     private readonly researcher?: ResearchAgent) {}
+
+  researchProfile(input: WorkflowResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
+    if (!this.researcher) throw new PlannerError("ai_configuration", false);
+    return this.researcher.profile(input, model, record, metrics);
+  }
+  discoverCompanies(input: WorkflowResearchInput, profile: TargetProfile, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
+    if (!this.researcher) throw new PlannerError("ai_configuration", false);
+    return this.researcher.discover(input, profile, model, record, metrics);
+  }
 
   research(input: ResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
     if (!this.researcher) throw new PlannerError("ai_configuration", false);

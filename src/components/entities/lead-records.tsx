@@ -32,8 +32,8 @@ export function LeadRecords({ leads, workflows, companies, selection, onOpen, on
             <td className="pl-4"><input id={`select-${lead.id}`} type="checkbox" aria-label={`Select ${company?.name}`} checked={selection.has(lead.id)} onChange={() => onSelect(lead.id)} className="size-3.5 cursor-pointer accent-primary" /></td>
             <td className="px-3 py-3.5"><button onClick={() => onOpen(lead.id)} className="flex max-w-full items-center gap-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"><CompanyMark name={company?.name ?? "Company"} /><span className="min-w-0"><span className="block truncate font-medium text-foreground">{company?.name}</span><span className="mt-1 block truncate text-[11px] text-muted-foreground">{company?.industry}</span></span></button></td>
             <td className="px-3 py-3.5"><p className="truncate text-foreground/85" title={lead.opportunity}>{lead.opportunity}</p><Link href={`/workflows/${lead.workflowId}`} className="interactive-link mt-1 block truncate text-[11px] text-muted-foreground hover:text-foreground hover:underline" title={workflow?.title}>{workflow?.title ?? "Source workflow"}</Link></td>
-            <td className="px-3 py-3.5"><ScoreRail score={lead.score} /></td>
-            <td className="px-3 py-3.5"><StatusBadge status={lead.status} /><span className="mt-1 block text-[10px] text-muted-foreground xl:hidden">{outreachLabel(lead.outreachStatus)}</span></td>
+            <td className="px-3 py-3.5"><ScoreRail score={lead.score} /><span className="mt-1 block text-[10px] capitalize text-muted-foreground">{lead.confidence ?? "Unknown"} confidence</span></td>
+            <td className="px-3 py-3.5"><StatusBadge status={lead.status} /><span className="mt-1 block text-[10px] text-muted-foreground xl:hidden">{entityDate.format(new Date(lead.updatedAt))}</span></td>
             <td className="hidden px-3 py-3.5 xl:table-cell"><span className={cn("inline-flex items-center gap-1.5 text-[11px]", lead.outreachStatus === "waiting_approval" ? "text-[var(--warning-fg)]" : "text-muted-foreground")}><span className={cn("size-1.5 rounded-full", lead.outreachStatus === "waiting_approval" ? "bg-[var(--warning-fg)]" : "bg-muted-foreground/40")} />{outreachLabel(lead.outreachStatus)}</span><span className="mt-1 block text-[10px] text-muted-foreground">{entityDate.format(new Date(lead.updatedAt))}</span></td>
             <td className="pr-3"><RecordChevron /></td>
           </tr>;
@@ -47,6 +47,8 @@ export function LeadRecords({ leads, workflows, companies, selection, onOpen, on
         <button onClick={() => onOpen(lead.id)} className="interactive-row flex min-w-0 flex-1 flex-col gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span className="flex w-full items-center gap-2.5"><CompanyMark name={company?.name ?? "Company"} /><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{company?.name}</span><span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{company?.industry}</span></span><span className="font-mono text-sm font-medium">{lead.score ?? "—"}</span><ArrowUpRight className="size-3.5 text-muted-foreground" /></span>
           <span className="text-xs leading-5 text-muted-foreground">{lead.opportunity}</span><span className="flex flex-wrap items-center gap-2"><StatusBadge status={lead.status} /><span className="text-[11px] text-muted-foreground">{outreachLabel(lead.outreachStatus)}</span></span>
+          <span className="text-[11px] capitalize text-muted-foreground">{lead.confidence ?? "Unknown"} confidence · Updated {entityDate.format(new Date(lead.updatedAt))}</span>
+          <span className="truncate text-[11px] text-muted-foreground">{workflows.find((workflow) => workflow.id === lead.workflowId)?.title ?? "Source workflow"}</span>
         </button>
       </div>;
     })}</div>

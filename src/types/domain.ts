@@ -62,6 +62,9 @@ export interface PlannerRun {
   totalTokens: number | null;
   error?: string;
 }
+export interface ResearchRun extends Omit<PlannerRun, "assumptions"> {
+  taskId: string | null;
+}
 
 export interface WorkflowStage {
   id: string;
@@ -85,6 +88,8 @@ export interface WorkflowTask {
   objective?: string;
   dependencies?: string[];
   expectedOutput?: string;
+  type?: string;
+  error?: string;
 }
 
 export type CompanyResearchStatus =
@@ -96,6 +101,7 @@ export type CompanyResearchStatus =
 export interface Company {
   id: string;
   workflowId: string | null;
+  workflowResearchStatuses?: Record<string, CompanyResearchStatus>;
   name: string;
   website: string | null;
   industry: string;
@@ -103,6 +109,11 @@ export interface Company {
   description: string;
   employeeEstimate: string;
   sourceUrls: string[];
+  sources?: import("zod").z.infer<typeof import("@/lib/validation/research").storedSourceSchema>[];
+  automationOpportunities?: { category: string; title: string; explanation: string; evidence: string[] }[];
+  scoreComponents?: import("zod").z.infer<typeof import("@/lib/validation/research").scoreComponentsSchema>;
+  scoreReason?: string;
+  qualificationConfidence?: "low" | "medium" | "high";
   researchSummary: string;
   opportunity: string;
   score: number | null;
@@ -140,6 +151,7 @@ export interface Lead {
   confidence: "high" | "medium" | "low" | null;
   outreachStatus: OutreachStatus;
   updatedAt: string;
+  scoreComponents?: import("zod").z.infer<typeof import("@/lib/validation/research").scoreComponentsSchema>;
 }
 
 export type ApprovalStatus =
@@ -231,4 +243,5 @@ export interface WorkspaceViewData {
   approvals: Approval[];
   activity: AgentEvent[];
   plannerRuns?: PlannerRun[];
+  researchRuns?: ResearchRun[];
 }

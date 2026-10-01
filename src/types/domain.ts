@@ -183,6 +183,13 @@ export type ProposedActionStatus =
   | "failed";
 
 export interface ProposedAction {
+  envelope?: import("@/lib/validation/execution").ExecutableEnvelope;
+  snapshot?: import("@/lib/validation/execution").ApprovalSnapshot;
+  attempts?: import("@/lib/validation/execution").ExecutionAttempt[];
+  blockers?: string[];
+  supersededById?: string;
+  replacesActionId?: string;
+  auxiliary?: boolean;
   id: string;
   leadId: string;
   companyId: string;
@@ -226,7 +233,7 @@ export type AgentEventType = import("@/types/persistence").AgentEventType | "lea
 
 export interface AgentEvent {
   id: string;
-  workflowId: string;
+  workflowId: string | null;
   companyId?: string;
   leadId?: string;
   category: ActivityCategory;
@@ -254,6 +261,8 @@ export interface DashboardMetrics {
 }
 
 export interface WorkspaceViewData {
+  integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
+  followUpPlans?: import("@/lib/validation/execution").FollowUpPlan[];
   workspace: Workspace;
   workflows: Workflow[];
   workflowStages: WorkflowStage[];

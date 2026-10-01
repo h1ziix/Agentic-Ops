@@ -19,8 +19,14 @@ import { approvalDraftSchema, useApprovalDrafts, type ApprovalDraft } from "@/co
 import type { ActionContentEdit } from "@/lib/validation/approval";
 import { formatDateTime } from "@/lib/format";
 import type { Approval } from "@/types/domain";
+import { LiveApprovalWorkspace } from "./live-approval-workspace";
 
 export function ApprovalWorkspace({ approval, workflowTitle, onDecision }: { approval: Approval; workflowTitle: string; onDecision: (status: "approved" | "rejected", edits: ActionContentEdit[], actionIds?: string[]) => Promise<void> }) {
+  const { mode } = useDemoStore();
+  return mode === "live" ? <LiveApprovalWorkspace approval={approval} workflowTitle={workflowTitle} /> : <DemoApprovalWorkspace approval={approval} workflowTitle={workflowTitle} onDecision={onDecision} />;
+}
+
+function DemoApprovalWorkspace({ approval, workflowTitle, onDecision }: { approval: Approval; workflowTitle: string; onDecision: (status: "approved" | "rejected", edits: ActionContentEdit[], actionIds?: string[]) => Promise<void> }) {
   const { mode } = useDemoStore();
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = useState(0);

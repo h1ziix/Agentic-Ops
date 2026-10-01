@@ -13,6 +13,7 @@ import { safePlanningError } from "./errors";
 import { PLANNER_PROMPT_VERSION } from "./planner-prompt";
 import { executeResearchStep, type ResearchExecutionStore } from "./research-orchestrator";
 import { executePreparationStep, type PreparationStore } from "./outreach-orchestrator";
+import type { Executor, ExecuteContext } from "../execution/executor";
 
 export interface PlanningReader {
   getWorkflowById(workspaceId: string, workflowId: string): Promise<WorkflowRow | null>;
@@ -34,7 +35,14 @@ export class Orchestrator {
     private readonly researchStore?: ResearchExecutionStore,
     private readonly preparationStore?: PreparationStore,
     private readonly preparationRuns?: AgentRunService,
+    private readonly executor?: Executor,
   ) {}
+
+  async executeAction(request: ExecuteContext) {
+    requestSchema.parse({ workflowId: request.workflowId, workspaceId: request.workspaceId, userId: request.userId });
+    if (!this.executor) throw new AppError("execution_blocked");
+    return this.executor.execute(request);
+  }
 
   async researchWorkflow(request: PlanWorkflowInput & { retry?: boolean }) {
     if (!requestSchema.safeParse({ workflowId: request.workflowId, workspaceId: request.workspaceId, userId: request.userId }).success) throw new AppError("validation");

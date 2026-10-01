@@ -26,6 +26,8 @@ const storageSchema = z.object({
 type ApprovalDecision = { status: "approved" | "rejected"; decidedAt: string };
 
 type DemoStore = {
+  integrationConnections?: WorkspaceViewData["integrationConnections"];
+  followUpPlans?: WorkspaceViewData["followUpPlans"];
   workspace: Workspace;
   mode: "demo" | "live";
   hydrated: boolean;
@@ -106,7 +108,7 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       const updates = Object.values(workflowUpdates).filter((view) => {
         const updated = view.workflows[0];
         const server = initialData.workflows.find((workflow) => workflow.id === updated?.id);
-        return updated && (!server || updated.updatedAt >= server.updatedAt);
+        return updated && (!server || updated.updatedAt > server.updatedAt);
       });
       const ids = new Set(updates.flatMap((view) => view.workflows.map((workflow) => workflow.id)));
       const updatedCompanies = new Map(initialData.companies.map((company) => [company.id, company]));
@@ -120,7 +122,9 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       workflows: [...updates.flatMap((view) => view.workflows), ...initialData.workflows.filter((row) => !ids.has(row.id))],
       workflowTasks: [...updates.flatMap((view) => view.workflowTasks), ...initialData.workflowTasks.filter((row) => !ids.has(row.workflowId))],
       workflowStages: [...updates.flatMap((view) => view.workflowStages), ...initialData.workflowStages.filter((row) => !ids.has(row.workflowId))],
-      activity: [...updates.flatMap((view) => view.activity), ...initialData.activity.filter((row) => !ids.has(row.workflowId))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+      activity: [...updates.flatMap((view) => view.activity), ...initialData.activity.filter((row) => !row.workflowId || !ids.has(row.workflowId))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+      integrationConnections: updates[0]?.integrationConnections ?? initialData.integrationConnections,
+      followUpPlans: [...updates.flatMap((view) => view.followUpPlans ?? []), ...(initialData.followUpPlans ?? []).filter((row) => !ids.has(row.workflow_id))],
       plannerRuns: [...updates.flatMap((view) => view.plannerRuns ?? []), ...(initialData.plannerRuns ?? []).filter((row) => !ids.has(row.workflowId))],
       researchRuns: [...updates.flatMap((view) => view.researchRuns ?? []), ...(initialData.researchRuns ?? []).filter((row) => !ids.has(row.workflowId))],
       preparationRuns: [...updates.flatMap((view) => view.preparationRuns ?? []), ...(initialData.preparationRuns ?? []).filter((row) => !ids.has(row.workflowId))],

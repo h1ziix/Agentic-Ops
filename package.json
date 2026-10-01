@@ -1,6 +1,6 @@
 {
   "name": "agentic-ops",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,9 +9,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify:client-secrets": "node scripts/verify-client-secrets.mjs",
-    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-execution.test.ts src/server/agents/research-providers.test.ts src/server/agents/outreach.test.ts src/server/agents/outreach-execution.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts",
+    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-execution.test.ts src/server/agents/research-providers.test.ts src/server/agents/outreach.test.ts src/server/agents/outreach-execution.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts src/server/execution/contracts.test.ts src/server/execution/executor.test.ts src/server/integrations/providers.test.ts src/server/integrations/oauth.test.ts src/server/http/mutations.test.ts",
     "verify:research": "tsx --conditions=react-server scripts/verify-research.ts",
-    "verify:outreach": "tsx --conditions=react-server scripts/verify-outreach.ts"
+    "verify:outreach": "tsx --conditions=react-server scripts/verify-outreach.ts",
+    "verify:execution": "tsx --conditions=react-server scripts/verify-execution.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -24,6 +25,7 @@
     "lucide-react": "^0.468.0",
     "motion": "^13.4.4",
     "next": "16.3.6",
+    "nodemailer": "^10.0.13",
     "openai": "^6.49.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20.0.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/ws": "^8.18.2",

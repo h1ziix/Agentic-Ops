@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. Release 0.5 extends validated planning and Stage 4 research with evidence review, personalized outreach drafts, proposed actions, persistent editing and human authorization. Authorized actions remain unexecuted; this release contains no email transport, CRM writer or Executor runtime. Historical proposals remain readable.
+Agentic Ops is an operational workspace for sales research workflows. Release 0.6 extends the existing planning, research, evidence review and approval architecture with a deterministic Executor: exact approved Gmail messages, exact HubSpot contact patches and internal follow-up plans. Approval and Execute are separate operations. Historical Release 0.5 content approvals stay readable and cannot authorize external execution.
 
 ## Requirements
 
@@ -153,6 +153,8 @@ This verifies completed planning/research tasks, actual web-search events, resea
 
 ## Stage 5 review, outreach and approval
 
+This section describes the preserved 0.5 preparation boundary. Its verifier must use an untouched 0.5 workflow, rather than weakening its missing-recipient/no-execution assertions to accommodate 0.6.
+
 The existing research endpoint continues `review_qualified_leads`, `generate_outreach`, then `request_approval`. Reviewer and Outreach use Gemini structured output with separate server-side prompts and centralized model overrides. They receive validated research and accepted evidence, without browsing or external action tools. Each run persists its input/output, status, model, timings, observed tokens, bounded retries and linked audit events.
 
 The Reviewer checks evidence independently of the score. It may approve, reject or request more research. Unknown or rewritten evidence is rejected; approval requires sufficient exact facts, an official company domain or its subdomain, adequate confidence and supported personalization. Unsupported buying intent and internal needs remain uncertainties. Only accepted leads reach Outreach. Invalid results fail one lead and preserve successful results. Transient provider failures receive at most one retry; validation errors never automatically regenerate. Expired claims and database locks prevent duplicate active work.
@@ -171,3 +173,62 @@ npm run verify:outreach -- --workflow WORKFLOW_UUID
 ```
 
 The SQL fixtures roll back and make no paid calls. The verification command reads a real completed preparation workflow without new provider calls, checking accepted evidence, linked runs/actions, unique drafts, edits, audit, task progress and the execution boundary. It writes an ignored report under `output/outreach/`. Run the research verifier on the same workflow to inspect Stage 4 results. The visible workflow page drives continuation; navigation away stops it after the current bounded request, and reopening resumes pending work.
+
+## Release 0.6 OAuth setup
+
+Set these **server-only** variables in `.env.local`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, `INTEGRATION_TOKEN_ENCRYPTION_KEY`. Never send their values in chat. The encryption key must be 32 cryptographically random bytes encoded as base64. Generate it in your own terminal with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` and copy directly into `.env.local`. There is no fallback key. Restart the server after changing environment variables.
+
+`NEXT_PUBLIC_APP_URL` is the validated canonical origin. Production requires HTTPS; HTTP is allowed only for localhost/loopback. Register these exact callback URIs in provider apps (replace the origin for another environment):
+
+- Google: `http://localhost:3000/api/integrations/gmail/callback`
+- HubSpot: `http://localhost:3000/api/integrations/hubspot/callback`
+
+These are separate from Supabase `/auth/callback`. Return navigation is fixed to Settings. The verified Supabase session and owner membership are required at both initiation and callback; changing session/browser during consent requires starting again. State is cryptographically random, hashed, browser/session/user/workspace/provider bound, single-use and expires after ten minutes. PKCE verifiers are encrypted server-side.
+
+In Google Cloud, enable Gmail API, configure the consent screen/Web application client and callback, and add your controlled test account as a test user while the app is in testing. Scopes are only `openid`, `https://www.googleapis.com/auth/userinfo.email` and `https://www.googleapis.com/auth/gmail.send`. Google uses code + PKCE and offline consent; the authenticated UserInfo endpoint verifies mailbox identity. Production verification and testing/offline-token restrictions are provider controlled. Do not add inbox/modify/Calendar scopes. See [Google web-server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server).
+
+Create a HubSpot OAuth app with `oauth`, `crm.objects.contacts.read`, `crm.objects.contacts.write`, the exact callback and a controlled test portal. Token exchange/introspection use OAuth v3 POST bodies, never credentials in URLs. This HubSpot contract does not expose PKCE; Google does. See [OAuth v3](https://developers.hubspot.com/changelog/new-oauth-v3-api-endpoints-and-standardized-error-responses) and [token management](https://developers.hubspot.com/docs/api-reference/legacy/authentication/manage-oauth-tokens).
+
+Only owners connect/disconnect/reconnect. Workspace members review, approve and execute. One retained Gmail and one HubSpot connection exist per workspace. Normal refresh preserves identity/generation and retains an omitted refresh token. Reconnection increments authorization generation and invalidates old snapshots. Disconnect removes local credentials first; Google revocation is attempted. HubSpot additionally requires uninstall in **Settings → Integrations → Connected apps**, since this v3 contract documents no corresponding revocation endpoint. Already dispatched HTTP may still complete.
+
+Credentials use AES-256-GCM with a random nonce/tag and workspace/connection/provider AAD; credential/state tables have RLS and no browser grants. Back up the key separately from the database. Key loss requires reconnection/new approvals. Rotation is not automated: coordinate a server-side decrypt/re-encrypt migration before replacing the key. Do not simply change it on a running instance. Expired OAuth states are cleaned at subsequent connection initiation; wider maintenance jobs belong to 0.7.
+
+## Exact approval and bounded execution
+
+The existing Orchestrator delegates to the deterministic Executor through small Execution/Integration services and repositories. AgentRuntime's LLM retry policy is not reused for mutations. Providers receive only a server-loaded immutable envelope. Executor runs persist actual duration/results with `model=null` and null AI usage. Existing `agent_events` supports workspace integration audit without fake workflows.
+
+Set and confirm one recipient (optional explicit name/role), select Gmail, review subject/body/evidence and save with expected revision. Confirmation records operator selection, not deliverability. Pending edits increment revision; approved edits create a replacement needing fresh approval and cancel the old unexecuted action. Executed email is immutable. Active dispatch or unresolved unknown blocks replacement. Original AI outputs and evidence are retained.
+
+Approve freezes IDs, revision, confirmed recipient, exact connection/generation/identity, content/parameters, verified actor/time and canonical digest. Bulk approval atomically checks every displayed revision. Old v1/loose content approvals cannot execute. Email approval grants no CRM write or future email permission. Approval performs no provider request.
+
+`POST /api/workflows/:id/execute` accepts only `{ actionId, expectedSnapshotId, retry? }`. One request handles one action; explicit UI batches dispatch ≤20 sequentially while mounted/visible. Limits: one active workflow action, 120-second claim lease, 30-second provider timeout, three attempts/snapshot. Resolve the entire primary batch first. Refresh/reopen never dispatch; navigation stops subsequent actions after the current request. Generic workflow/task transitions cannot impersonate execution completion.
+
+Checked transactions lock workflow → action → attempt. Claim/dispatch audit precedes remote mutation; completion/result/domain/audit save together. External HTTP never runs inside a transaction. Replay returns saved success. Expired pre-dispatch claims can recover; expired dispatch becomes **outcome unknown**, never permission to resend. Definitive rejection permits explicit retry after `nextRetryAt`; timeout/reset/ambiguous 5xx does not. Persistence recovery saves the same provider response without another send. Cancellation preserves late confirmed success and stops siblings; partial failure retains earlier results.
+
+Gmail sends UTF-8 text/plain MIME, one approved To, approved From, encoded subject/name and stable RFC Message-ID. No attachments/CC/BCC/arbitrary headers/HTML. Message/thread IDs mean **accepted by Gmail**, not delivered/read/responded. Message-ID does not guarantee provider deduplication or exactly-once delivery. See [sending](https://developers.google.com/workspace/gmail/api/guides/sending) and [errors](https://developers.google.com/workspace/gmail/api/guides/handle-errors).
+
+Unknown email requires manual Gmail Sent checking by account/time/recipient/Message-ID. Actor/time/note are saved; manual confirmation is `user_confirmed`, not API-confirmed. “Not found” retains uncertainty. Explicit closure permits a replacement with duplicate risk, new approval and Execute; the uncertain record remains. No Gmail read scopes or background reconciliation are added.
+
+**Sync contact / preview** reads HubSpot by unique email (`idProperty=email`), then proposes exact changed fields. Only explicit firstname/lastname/jobtitle and source-supported company/website are allowed. Empty/absent inputs do not clear fields. CRM requires its own approval/Execute; recheck expected fields before PATCH. A changed preview requires fresh replacement. Missing contacts are created; duplicate conflicts read canonical identity rather than search. Unknown writes reconcile read-only against exact fields. HubSpot offers no atomic compare-and-swap here, leaving an external-edit race between check and write. See [Contacts API](https://developers.hubspot.com/docs/api-reference/legacy/crm/objects/contacts/guide).
+
+After an accepted/operator-confirmed email, **Plan follow-up** accepts explicit future UTC time and IANA display timezone, separate approval and Execute. One internal `planned` record is saved atomically; no email/job/Calendar event fires when due. Cancel is audited. Changing date cancels the saved plan and creates a replacement requiring approval. Auxiliary CRM/plans never reopen completed core tasks; cancelled workflows cannot dispatch.
+
+## Release 0.6 verification and boundary
+
+Performed checks, development migration targets and unresolved live gates are recorded in [Release 0.6 verification notes](docs/release-0.6-verification.md). Implementation availability does not mean controlled live acceptance is complete.
+
+```powershell
+npx supabase@latest db query --linked --file supabase/tests/planner_runtime.sql
+npx supabase@latest db query --linked --file supabase/tests/research_runtime.sql
+npx supabase@latest db query --linked --file supabase/tests/outreach_runtime.sql
+npx supabase@latest db query --linked --file supabase/tests/execution_runtime.sql
+npm run verify:execution -- --workflow WORKFLOW_UUID --action ACTION_UUID
+# Explicit check of historical execution blocking:
+npm run verify:execution -- --workflow UNTOUCHED_05_WORKFLOW_UUID --mode legacy
+```
+
+SQL fixtures roll back and use mocked results, with no provider calls. Unit tests mock every paid API/external mutation. The read-only verifier checks snapshots/digests/revisions/identity, attempt uniqueness, result IDs, audit, core/lead state and auxiliary plans. It cannot independently establish provider delivery or CRM state. Ignored reports are under `output/execution/`. `verify:outreach` retains strict 0.5 defaults and must use an untouched fixture.
+
+Controlled live verification requires owner OAuth consent, a user-controlled test inbox and test HubSpot portal/contact. Show exact test account/recipient/subject/body or patch, product approval and separate permission, then Execute. Verify Sent/result, persistence, replay, recipient replacement, CRM create/update without duplicate and saved follow-up without automatic send. Test unknown outcomes with deterministic mocked transport. Missing environment/consent/accounts block live verification; mocked checks are never live evidence.
+
+0.7 owns background continuation, scheduled retries, follow-up dispatch (a future email requires new approval), Calendar, response monitoring/webhooks and recovery/reconciliation jobs. None is implemented in 0.6; no billing, analytics, deployment or new orchestration infrastructure. Existing failed preparation leads remain skipped on resume, with no explicit preparation retry.

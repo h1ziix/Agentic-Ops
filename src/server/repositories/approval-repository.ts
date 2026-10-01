@@ -5,9 +5,21 @@ import type { ActionContentEdit } from "@/lib/validation/approval";
 import type { ServerSupabase } from "../auth/context";
 import { AppError, fromDatabaseError } from "../errors";
 import { parseDatabaseResult } from "./parse";
+import type { executableEmailEditSchema, revisionSelectionSchema } from "@/lib/validation/execution";
 
 export class ApprovalRepository {
   constructor(private readonly supabase: ServerSupabase) {}
+  async saveExecutableEmail(edit: z.infer<typeof executableEmailEditSchema>) {
+    const { data, error } = await this.supabase.rpc("save_executable_email", { p_action_id: edit.actionId, p_revision: edit.revision,
+      p_email: edit.email, p_name: edit.name, p_role: edit.role, p_connection: edit.connectionId, p_subject: edit.subject, p_body: edit.body });
+    if (error) throw fromDatabaseError("save_executable_email", error);
+    return proposedActionRowSchema.parse(data);
+  }
+  async decideRevisions(id: string, decision: ApprovalDecision, revisions: z.infer<typeof revisionSelectionSchema>) {
+    const { data, error } = await this.supabase.rpc("decide_action_revisions", { p_approval_id: id, p_decision: decision, p_revisions: revisions });
+    if (error) throw fromDatabaseError("decide_action_revisions", error);
+    return approvalRowSchema.parse(data);
+  }
 
   async listWorkspaceApprovals(workspaceId: string, workflowId?: string): Promise<ApprovalRow[]> {
     let query = this.supabase.from("approvals").select("*").eq("workspace_id", workspaceId);

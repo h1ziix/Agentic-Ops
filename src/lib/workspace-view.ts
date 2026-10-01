@@ -4,6 +4,8 @@ import type { AgentRunRow, WorkflowTaskRow, WorkspaceSnapshot } from "@/types/pe
 import { plannerTaskContextSchema, validatedPlannerOutputSchema } from "@/lib/validation/planner";
 import { researchAnalysisSchema, researchOutputSchema } from "@/lib/validation/research";
 import { emailActionPayloadSchema } from "@/lib/validation/outreach";
+import { executableEnvelopeSchema } from "@/lib/validation/execution";
+import { executionBlockers } from "@/server/execution/readiness";
 
 const stageDefinitions = [
   { label: "Planning", taskTypes: ["define_target_profile"] },
@@ -147,20 +149,33 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       recipientCount: actions.length,
       proposedActions: actions.map((action) => {
         const payload = emailActionPayloadSchema.safeParse(action.payload);
+        const executable = executableEnvelopeSchema.safeParse(action.executable_envelope);
+        const envelope = executable.success ? executable.data : undefined;
+        const savedSnapshot = snapshot.actionSnapshots?.find((s) => s.action_id === action.id && s.revision === action.revision);
+        const attempts = snapshot.executionAttempts?.filter((t) => t.action_id === action.id) ?? [];
+        const workflow = snapshot.workflows.find((w) => w.id === action.workflow_id)!;
+        const blockers = workflow ? executionBlockers(action, savedSnapshot ?? null, snapshot.integrationConnections?.find((c) => c.id === savedSnapshot?.connection_id) ?? null, workflow, attempts) : ["Workflow unavailable"];
+        if (!action.is_auxiliary && snapshot.proposedActions.some((a) => a.workflow_id === action.workflow_id && !a.is_auxiliary && !a.superseded_by_id && ["pending_approval", "waiting_for_approval"].includes(a.status))) blockers.push("Resolve every primary batch decision before executing emails.");
+        if (snapshot.executionAttempts?.some((a) => a.workflow_id === action.workflow_id && a.action_id !== action.id && a.status === "outcome_unknown" && a.verification_method !== "closed_for_replacement")) blockers.push("Another action has an unresolved unknown outcome; reconcile it first.");
+        if (snapshot.executionAttempts?.some((a) => a.workflow_id === action.workflow_id && a.action_id !== action.id && ["claimed", "dispatching"].includes(a.status))) blockers.push("Another action is active on this workflow. Inspect its saved status first.");
         return ({
+        envelope, snapshot: savedSnapshot, attempts, auxiliary: action.is_auxiliary,
+        supersededById: action.superseded_by_id ?? undefined,
+        replacesActionId: action.replaces_action_id ?? undefined,
+        blockers,
         id: action.id,
         leadId: stringField(action.target, "lead_id", "leadId") ?? "",
         companyId: stringField(action.target, "company_id", "companyId") ?? "",
         actionType: action.action_type,
         recipientName: stringField(action.target, "recipient_name", "recipientName", "name") ?? "Recipient",
-        recipientEmail: stringField(action.target, "recipient_email", "recipientEmail", "email") ?? "",
-        subject: stringField(action.payload, "subject") ?? "Untitled proposal",
-        body: stringField(action.payload, "body") ?? "No message body is available.",
+        recipientEmail: envelope && "recipient" in envelope ? envelope.recipient.email : stringField(action.target, "recipient_email", "recipientEmail", "email") ?? "",
+        subject: envelope?.actionType === "send_email" ? envelope.subject : envelope?.actionType === "upsert_crm_contact" ? "Exact HubSpot contact changes" : envelope?.actionType === "schedule_follow_up" ? "Internal follow-up plan" : stringField(action.payload, "subject") ?? "Untitled proposal",
+        body: envelope?.actionType === "send_email" ? envelope.body : stringField(action.payload, "body") ?? "No message body is available.",
         status: action.status,
         revision: action.revision ?? 0,
         evidenceReferences: payload.success ? payload.data.evidenceReferences : [],
         metadata: payload.success ? payload.data.generationMetadata : undefined,
-        warnings: payload.success ? payload.data.warnings : [],
+        warnings: envelope ? [] : payload.success ? payload.data.warnings : [],
         executionReadiness: payload.success ? payload.data.executionReadiness : stringField(action.target, "recipientEmail", "recipient_email", "email") ? "ready" as const : "blocked_missing_recipient" as const,
         dedupeKey: action.dedupe_key ?? undefined,
         riskLevel: action.risk_level,
@@ -177,6 +192,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       : kind.startsWith("workflow_") ? "workflow" as const
       : "agent" as const;
     const status = kind.includes("failed") || kind === "error" ? "failed" as const
+      : kind === "execution_outcome_unknown" || kind === "integration_reconnect_required" ? "waiting" as const
       : kind.endsWith("_started") ? "running" as const
       : kind === "approval_requested" ? "waiting" as const
       : "completed" as const;
@@ -243,7 +259,8 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     error: typeof row.error === "object" && row.error !== null && "message" in row.error && typeof row.error.message === "string" ? row.error.message : undefined,
     agent: runsByTask.get(row.id) ? agentName(runsByTask.get(row.id)!.agent_type)
       : row.type === "review_qualified_leads" ? "Reviewer Agent" as const
-      : row.type === "generate_outreach" ? "Outreach Agent" as const : "Unassigned" as const,
+      : row.type === "generate_outreach" ? "Outreach Agent" as const
+      : row.type === "execute_approved_actions" ? "Executor Agent" as const : "Unassigned" as const,
     completedAt: row.completed_at ?? undefined,
     ...(context.success ? context.data : {}),
   }); });
@@ -257,7 +274,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       else if (workflow.status === "planning" && !tasks.length) status = "running";
     }
     if (definition.label === "Approval") {
-      const decisions = approvals.filter((approval) => approval.workflowId === workflow.id);
+      const decisions = approvals.filter((approval) => approval.workflowId === workflow.id && !approval.proposedActions.every((action) => action.auxiliary));
       status = decisions.some((approval) => approval.status === "pending") ? "running"
         : decisions.some((approval) => approval.status === "rejected") ? "completed"
         : decisions.length > 0 && decisions.every((approval) => approval.status === "approved" || approval.status === "executed") ? "completed"
@@ -269,6 +286,8 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
 
   const initials = snapshot.workspace.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "AO";
   return {
+    integrationConnections: snapshot.integrationConnections ?? [],
+    followUpPlans: snapshot.followUpPlans ?? [],
     workspace: { id: snapshot.workspace.id, name: snapshot.workspace.name, initials, plan: "Workspace", mode: "live" },
     workflows,
     workflowStages,

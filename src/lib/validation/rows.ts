@@ -129,12 +129,14 @@ export const agentEventTypeSchema = z.enum([
   "review_started", "review_completed", "lead_approved_for_outreach", "lead_rejected_for_outreach", "lead_requires_more_research",
   "outreach_draft_created", "outreach_draft_failed", "proposed_action_edited", "proposed_action_approved", "proposed_action_rejected",
   "execution_started", "execution_completed", "execution_failed", "error", "retry",
+  "integration_connected", "integration_disconnected", "integration_reconnect_required", "recipient_confirmed", "proposal_superseded",
+  "execution_claimed", "execution_succeeded", "execution_outcome_unknown", "execution_reconciled", "execution_retry_requested", "follow_up_planned", "follow_up_cancelled",
 ]);
 
 export const agentEventRowSchema = z.object({
   id,
   workspace_id: id,
-  workflow_id: id,
+  workflow_id: id.nullable(),
   agent_run_id: id.nullable(),
   workflow_task_id: id.nullable(),
   event_type: agentEventTypeSchema,
@@ -172,6 +174,12 @@ export const proposedActionRowSchema = z.object({
   status: z.enum(["draft", "ready_for_review", "pending_approval", "waiting_for_approval", "approved", "rejected", "cancelled", "executed", "failed"]),
   dedupe_key: z.string().nullable().optional(),
   revision: z.number().int().optional(),
+  schema_version: z.number().int().optional(),
+  executable_envelope: z.unknown().nullable().optional(),
+  lineage_id: id.optional(),
+  replaces_action_id: id.nullable().optional(),
+  superseded_by_id: id.nullable().optional(),
+  is_auxiliary: z.boolean().optional(),
   risk_level: z.string(),
   created_at: timestamp,
   executed_at: nullableTimestamp,

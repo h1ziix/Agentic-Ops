@@ -55,7 +55,7 @@ export function ApprovalPreview({ approvals, pendingCount }: { approvals: Approv
           {needsDecision ? "Open approval inbox" : "View decision history"}
           <ArrowRight className="size-3 transition-transform duration-200 motion-safe:group-hover:translate-x-0.5" aria-hidden="true" />
         </Link>
-        <p className="mt-2 px-0.5 text-[9px] text-muted-foreground">External sending is disabled.</p>
+        <p className="mt-2 px-0.5 text-[9px] text-muted-foreground">Approval records permission. Execute separately.</p>
       </div>
     </section>
   );

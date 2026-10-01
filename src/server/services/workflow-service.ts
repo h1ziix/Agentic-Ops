@@ -8,6 +8,8 @@ import { CompanyRepository, LeadRepository } from "../repositories/entity-reposi
 import { WorkflowRepository } from "../repositories/workflow-repository";
 import { assertTaskTransition, assertWorkflowTransition } from "../state/workflow";
 import { AppError } from "../errors";
+import { ExecutionRepository } from "../repositories/execution-repository";
+import { IntegrationRepository } from "../repositories/integration-repository";
 
 const transitionSummarySchema = z.string().trim().min(1).max(500).optional();
 
@@ -61,7 +63,8 @@ export async function getWorkflowDetailSnapshot(workflowId: string, context?: Wo
     new ApprovalRepository(supabase).listWorkspaceProposedActions(workspace.id, workflow.id),
   ]);
 
-  return { workflow, tasks, companies, leads, agentRuns, events, approvals, proposedActions };
+  const [execution, integrationConnections] = await Promise.all([new ExecutionRepository(supabase).list(workspace.id, workflow.id), new IntegrationRepository(supabase).list(workspace.id)]);
+  return { workflow, tasks, companies, leads, agentRuns, events, approvals, proposedActions, ...execution, integrationConnections };
 }
 
 export async function transitionWorkflow(workflowId: string, nextStatus: unknown, summary?: string): Promise<WorkflowRow> {

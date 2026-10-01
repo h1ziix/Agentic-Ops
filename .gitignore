@@ -11,6 +11,7 @@ next-env.d.ts
 output/playwright/
 output/research/
 output/outreach/
+output/execution/
 output/*.log
 supabase/.temp/
 supabase/.branches/

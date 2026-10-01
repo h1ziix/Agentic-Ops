@@ -1,9 +1,10 @@
 "use client";
 
-import { Bot, CalendarDays, ChevronRight, DatabaseZap, GitBranch, Globe, LockKeyhole, Mail, Monitor, Plug, ShieldCheck, Workflow } from "lucide-react";
+import { Bot, ChevronRight, GitBranch, Globe, LockKeyhole, Monitor, Plug, ShieldCheck, Workflow } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { ThemeSelector } from "@/components/app/theme-selector";
 import { useDemoStore } from "@/components/app/demo-store";
+import { IntegrationSettings } from "@/components/integrations/integration-settings";
 import { cn } from "@/lib/utils";
 
 const settingsSections = [
@@ -18,11 +19,6 @@ const agentRoles = [
   { title: "Research", role: "Discovers companies and prepares context", code: "RE" },
   { title: "Reviewer", role: "Qualifies opportunities and evaluates fit", code: "RV" },
   { title: "Executor", role: "Carries out actions after human approval", code: "EX" },
-];
-const integrations = [
-  { name: "Gmail", description: "Send approved outreach from your mailbox", icon: Mail },
-  { name: "Google Calendar", description: "Schedule meetings and follow-ups", icon: CalendarDays },
-  { name: "HubSpot", description: "Keep companies and contacts in sync", icon: DatabaseZap },
 ];
 
 export default function SettingsPage() {
@@ -41,7 +37,7 @@ export default function SettingsPage() {
           <section id="workspace" className="scroll-mt-8">
             <SectionHeading title="Workspace" description="A shared environment for your sales operations." />
             <div className="mt-5 flex items-center gap-3.5"><div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-xs font-semibold">{workspace.initials}</div><div><p className="text-sm font-semibold">{workspace.name}</p><p className="mt-1 text-xs text-muted-foreground">{workspace.plan} · {mode === "live" ? "Authenticated workspace" : "Sample workspace"}</p></div></div>
-            <div className="mt-5 border-y border-border"><InfoRow label="Workspace ID" value={workspace.id} mono /><InfoRow label="Data location" value={mode === "live" ? "Supabase PostgreSQL" : "This browser"} /><InfoRow label="Environment" value={mode === "live" ? "Persistent · external execution off" : "Demo · no external connections"} last /></div>
+            <div className="mt-5 border-y border-border"><InfoRow label="Workspace ID" value={workspace.id} mono /><InfoRow label="Data location" value={mode === "live" ? "Supabase PostgreSQL" : "This browser"} /><InfoRow label="Environment" value={mode === "live" ? "Persistent · exact approvals required" : "Demo · no external connections"} last /></div>
             <p className="mt-3 flex items-start gap-2 text-[11px] leading-5 text-muted-foreground"><Globe className="mt-0.5 size-3.5 shrink-0" />{mode === "live" ? "Workflows, generated plans, activity, and approval decisions are saved to this workspace." : "New workflows, approval decisions, and edited drafts are stored locally. Sample company research is included."}</p>
           </section>
           <section id="appearance" className="scroll-mt-8">
@@ -51,20 +47,18 @@ export default function SettingsPage() {
           <section id="agents" className="scroll-mt-8">
             <SectionHeading title="Agent team" description="Four focused roles, with a visible record of their work." />
             <div className="mt-1">
-              {agentRoles.map((agent) => <div key={agent.code} className="flex items-center gap-3 border-b border-border py-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[10px] text-muted-foreground">{agent.code}</span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{agent.title} Agent</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{agent.role}</p></div><span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">{mode === "live" && agent.code === "PL" ? "Available" : "Future stage"}</span></div>)}
+              {agentRoles.map((agent) => <div key={agent.code} className="flex items-center gap-3 border-b border-border py-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[10px] text-muted-foreground">{agent.code}</span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{agent.title} Agent</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{agent.role}</p></div><span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">{mode === "live" ? "Available" : "Future stage"}</span></div>)}
             </div>
-            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{mode === "live" ? "The Planner generates validated task plans with a persisted execution record. Research, review, and external execution are planned for later stages." : "This browser preview uses sample data. Connect a workspace to run the Planner."}</p>
+            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{mode === "live" ? "Planning, research and preparation retain their AI provenance. The deterministic Executor performs separately approved typed actions." : "This browser preview uses sample data. Connect a workspace to run the Planner."}</p>
           </section>
           <section id="integrations" className="scroll-mt-8">
-            <SectionHeading title="Integrations" description="Connect your tools when live execution becomes available." />
-            <div className="mt-1">
-              {integrations.map(({ name, description, icon: Icon }) => <div key={name} className="flex flex-wrap items-center gap-3 border-b border-border py-4"><div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-card"><Icon className="size-4 text-muted-foreground" /></div><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{name}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p></div><span className="ml-12 rounded-md bg-muted px-2 py-1 text-[10px] text-muted-foreground sm:ml-0">Not connected</span></div>)}
-            </div>
+            <SectionHeading title="Integrations" description="Connect approved execution to your mailbox and CRM." />
+            <IntegrationSettings />
           </section>
           <section id="guardrails" className="scroll-mt-8">
             <SectionHeading title="Operating guardrails" description="Keep human judgment at the center of every external action." />
-            <div className="flex items-start gap-3 border-b border-border py-5"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--success-fg)]" /><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">Approval before execution</p><p className="mt-1 max-w-xl text-xs leading-6 text-muted-foreground">Review the recipient, evidence, and proposed message before recording a decision. All sends, CRM writes, and calendar changes require approval.</p></div><span className="rounded-md border border-[var(--success-border)] bg-[var(--success-bg)] px-2 py-1 text-[10px] font-medium text-[var(--success-fg)]">Required</span></div>
-            <div className="flex items-start gap-3 border-b border-border py-5"><GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="text-[13px] font-medium">Schedules, retries, and follow-ups</p><p className="mt-1 text-xs leading-6 text-muted-foreground">The Planner retries recoverable errors once. Failed planning can be retried from its workflow. Scheduled research and follow-ups are not available yet.</p></div></div>
+            <div className="flex items-start gap-3 border-b border-border py-5"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--success-fg)]" /><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">Approval before execution</p><p className="mt-1 max-w-xl text-xs leading-6 text-muted-foreground">Review the exact recipient, account, evidence and content. Email, CRM and internal follow-up plans have independent approvals and explicit Execute.</p></div><span className="rounded-md border border-[var(--success-border)] bg-[var(--success-bg)] px-2 py-1 text-[10px] font-medium text-[var(--success-fg)]">Required</span></div>
+            <div className="flex items-start gap-3 border-b border-border py-5"><GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="text-[13px] font-medium">Schedules, retries, and follow-ups</p><p className="mt-1 text-xs leading-6 text-muted-foreground">Execution retries require a definitive unsent result and an explicit request. Unknown outcomes block resend. Follow-up plans are internal; automatic dispatch and Calendar belong to Release 0.7.</p></div></div>
           </section>
         </div>
       </div>

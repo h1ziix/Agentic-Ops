@@ -5,7 +5,7 @@ import nextEnv from "@next/env";
 nextEnv.loadEnvConfig(process.cwd());
 const assetRoot = path.join(process.cwd(), ".next", "static");
 if (!fs.existsSync(assetRoot)) throw new Error("Run npm run build before checking browser assets.");
-const secretNames = ["OPENAI_API_KEY", "GEMINI_API_KEY", "TAVILY_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+const secretNames = ["OPENAI_API_KEY", "GEMINI_API_KEY", "TAVILY_API_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "GOOGLE_CLIENT_SECRET", "HUBSPOT_CLIENT_SECRET", "INTEGRATION_TOKEN_ENCRYPTION_KEY"];
 const secrets = secretNames
   .map((name) => ({ name, value: process.env[name]?.trim() }))
   .filter(({ value }) => value && value.length >= 12 && !value.includes("YOUR_"));

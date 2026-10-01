@@ -1,5 +1,11 @@
 # Agentic Ops
 
+## Current release boundary
+
+The stages below are historical planning. Release 0.6 extends 0.5 with a deterministic Executor, Gmail/HubSpot OAuth and exact approved messages/contact patches, plus internal follow-up plans. Approve and Execute remain separate; legacy content approvals never grant execution rights. The operational dark/light SaaS design and existing pipeline remain authoritative.
+
+Release 0.7 owns Calendar, background continuation, scheduled retries, separately approved future follow-up dispatch, monitoring and recovery/reconciliation jobs, even where the old stages group them together. Controlled live verification is a 0.6 acceptance gate; missing consent/configuration must be reported explicitly.
+
 ## Product Definition
 
 Agentic Ops is an agentic AI sales operations platform.

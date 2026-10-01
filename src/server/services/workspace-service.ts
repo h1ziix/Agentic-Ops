@@ -4,6 +4,8 @@ import { CompanyRepository, LeadRepository } from "../repositories/entity-reposi
 import { WorkflowRepository } from "../repositories/workflow-repository";
 import { requireWorkspace } from "../auth/context";
 import type { WorkspaceSnapshot } from "@/types/persistence";
+import { ExecutionRepository } from "../repositories/execution-repository";
+import { IntegrationRepository } from "../repositories/integration-repository";
 
 /** Request-scoped workspace data for the current Stage 1-compatible UI adapter. */
 export async function getWorkspaceSnapshot(workspaceId?: string): Promise<WorkspaceSnapshot> {
@@ -27,5 +29,6 @@ export async function getWorkspaceSnapshot(workspaceId?: string): Promise<Worksp
     companyRepository.listWorkflowAssociations(workspace.id),
   ]);
 
-  return { workspace, workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions, workflowCompanies };
+  const [execution, integrationConnections] = await Promise.all([new ExecutionRepository(supabase).list(workspace.id), new IntegrationRepository(supabase).list(workspace.id)]);
+  return { workspace, workflows, tasks, companies, leads, agentRuns, events, approvals, proposedActions, workflowCompanies, ...execution, integrationConnections };
 }

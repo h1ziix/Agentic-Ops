@@ -21,6 +21,10 @@ export type AgentEventType = z.infer<typeof agentEventTypeSchema>;
 export type ApprovalDecision = z.infer<typeof approvalDecisionSchema>;
 
 export interface WorkspaceSnapshot {
+  integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
+  actionSnapshots?: import("@/lib/validation/execution").ApprovalSnapshot[];
+  executionAttempts?: import("@/lib/validation/execution").ExecutionAttempt[];
+  followUpPlans?: import("@/lib/validation/execution").FollowUpPlan[];
   workspace: WorkspaceRow;
   workflows: WorkflowRow[];
   tasks: WorkflowTaskRow[];
@@ -34,6 +38,10 @@ export interface WorkspaceSnapshot {
 }
 
 export interface WorkflowDetailSnapshot {
+  integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
+  actionSnapshots?: import("@/lib/validation/execution").ApprovalSnapshot[];
+  executionAttempts?: import("@/lib/validation/execution").ExecutionAttempt[];
+  followUpPlans?: import("@/lib/validation/execution").FollowUpPlan[];
   workflow: WorkflowRow;
   tasks: WorkflowTaskRow[];
   companies: CompanyRow[];

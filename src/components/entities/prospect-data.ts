@@ -7,7 +7,7 @@ import type { Company, Lead, OutreachStatus } from "@/types/domain";
 export const entityDate = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "Asia/Almaty" });
 
 export function outreachLabel(status: OutreachStatus) {
-  const labels: Record<OutreachStatus, string> = { not_started: "Not started", drafted: "Drafted", waiting_approval: "Needs review", approved: "Approved", sent: "Sent" };
+  const labels: Record<OutreachStatus, string> = { not_started: "Not started", reviewing: "Reviewing evidence", drafting: "Drafting", draft_ready: "Draft ready", drafted: "Drafted", waiting_approval: "Needs review", approved: "Approved", rejected: "Rejected", needs_more_research: "More research needed", blocked_missing_recipient: "Recipient missing", failed: "Preparation failed", sent: "Sent" };
   return labels[status];
 }
 

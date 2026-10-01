@@ -12,3 +12,10 @@ export function getPlannerModel(): string {
 export function getResearchModel(): string {
   return process.env.RESEARCH_MODEL?.trim() || process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 }
+
+export function getReviewerModel(): string {
+  return process.env.REVIEWER_MODEL?.trim() || getResearchModel();
+}
+export function getOutreachModel(): string {
+  return process.env.OUTREACH_MODEL?.trim() || getResearchModel();
+}

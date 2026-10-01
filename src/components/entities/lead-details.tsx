@@ -17,14 +17,15 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [open, setOpen] = useState(true);
   const { drafts } = useApprovalDrafts();
-  const { workflows, approvals, activity, companyById } = useProspectData();
+  const { workflows, approvals, activity, companyById, mode } = useProspectData();
   if (!lead) return null;
-  const company = companyById.get(lead.companyId);
+  const currentCompany = companyById.get(lead.companyId);
+  const company = currentCompany ? { ...currentCompany, ...lead.researchContext } : undefined;
   const workflow = workflows.find((item) => item.id === lead.workflowId);
   const approval = approvals.find((item) => item.proposedActions.some((action) => action.leadId === lead.id));
   const proposal = approval?.proposedActions.find((action) => action.leadId === lead.id);
-  const message = proposal ? drafts[proposal.id] ?? proposal : null;
-  const events = activity.filter((event) => event.leadId === lead.id || event.companyId === lead.companyId);
+  const message = proposal ? mode === "demo" ? drafts[proposal.id] ?? proposal : proposal : null;
+  const events = activity.filter((event) => event.workflowId === lead.workflowId && (event.leadId === lead.id || event.companyId === lead.companyId));
 
   return <Sheet open={open} onOpenChange={setOpen} onOpenChangeComplete={(nextOpen) => { if (!nextOpen) onClose(); }}>
     <SheetContent initialFocus={titleRef} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
@@ -44,10 +45,11 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4 text-xs"><div><dt className="text-muted-foreground">Industry</dt><dd className="mt-1.5 text-foreground">{company?.industry ?? "Not available"}</dd></div><div><dt className="text-muted-foreground">Company size</dt><dd className="mt-1.5 text-foreground">{company?.employeeEstimate ?? "Not available"} employees</dd></div><div><dt className="text-muted-foreground">Market</dt><dd className="mt-1.5 text-foreground">{company?.location ?? "Not available"}</dd></div><div><dt className="text-muted-foreground">Research</dt><dd className="mt-1.5 capitalize text-foreground">{company?.researchStatus ?? "Not available"}</dd></div></dl>
         </EntitySection>
         {company && <EntitySection title="Research sources" icon={<FileText className="size-4 text-muted-foreground" />}><ResearchSources company={company} /></EntitySection>}
+        {lead.review && <EntitySection title="Evidence review" icon={<ShieldCheck className="size-4 text-muted-foreground" />}><p className="text-xs font-medium capitalize">{lead.review.decision.replaceAll('_', ' ')} · {lead.review.confidence} confidence</p><p className="text-xs leading-6 text-muted-foreground">{lead.review.summary}</p>{lead.review.concerns.map((concern) => <p key={concern} className="text-[11px] leading-5 text-muted-foreground">{concern}</p>)}</EntitySection>}
         <EntitySection title="Outreach preview" icon={<Mail className="size-4 text-muted-foreground" />}>
           <div className="flex items-center justify-between gap-3 text-xs"><span className="text-muted-foreground">Message status</span><StatusBadge status={lead.outreachStatus} label={outreachLabel(lead.outreachStatus)} /></div>
-          {proposal && message ? <div className="overflow-hidden rounded-md border border-border"><div className="flex flex-col gap-1 border-b border-border bg-muted/30 px-4 py-3"><p className="text-[11px] text-muted-foreground">To: {proposal.recipientName}</p><p className="text-xs font-medium">{message.subject}</p></div><p className="whitespace-pre-line px-4 py-3 text-xs leading-5 text-muted-foreground">{message.body.split("\n\n").slice(0, 3).join("\n\n")}</p></div> : <p className="text-xs leading-5 text-muted-foreground">{lead.outreachStatus === "sent" ? "Outreach was sent in the seeded demo history. No external messages are sent by this workspace." : "Research is available. Outreach has not been drafted for this opportunity."}</p>}
-          {approval && <Button variant={approval.status === "pending" ? "default" : "outline"} className="self-start" nativeButton={false} render={<Link href="/approvals" />}><ShieldCheck data-icon="inline-start" />{approval.status === "pending" ? "Review outreach" : "View approval decision"}<ArrowRight data-icon="inline-end" /></Button>}
+          {proposal && message ? <div className="overflow-hidden rounded-md border border-border"><div className="flex flex-col gap-1 border-b border-border bg-muted/30 px-4 py-3"><p className="text-[11px] text-muted-foreground">To: {proposal.recipientEmail ? proposal.recipientName : `${company?.name ?? "Company"} team · no verified recipient`}</p><p className="text-xs font-medium">{message.subject}</p></div><p className="whitespace-pre-line px-4 py-3 text-xs leading-5 text-muted-foreground">{message.body.split("\n\n").slice(0, 3).join("\n\n")}</p></div> : <p className="text-xs leading-5 text-muted-foreground">{lead.outreachStatus === "sent" ? "Outreach was sent in the seeded demo history. No external messages are sent by this workspace." : "Research is available. Outreach has not been drafted for this opportunity."}</p>}
+          {approval && <Button variant={approval.status === "pending" ? "default" : "outline"} className="self-start" nativeButton={false} render={<Link href={`/approvals?approval=${encodeURIComponent(approval.id)}`} />}><ShieldCheck data-icon="inline-start" />{approval.status === "pending" ? "Review outreach" : "View approval decision"}<ArrowRight data-icon="inline-end" /></Button>}
           {approval?.status === "approved" && <p className="text-[11px] leading-5 text-muted-foreground">Approval recorded. Execution is unavailable; no email was sent.</p>}
         </EntitySection>
         {events.length > 0 && <EntitySection title="Recent agent activity" icon={<FileText className="size-4 text-muted-foreground" />}><ol className="flex flex-col gap-3 border-l border-border pl-4">{events.map((event) => <li key={event.id}><p className="text-xs leading-5">{event.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{event.agent ?? "Workflow"} · {entityDate.format(new Date(event.timestamp))}</p></li>)}</ol></EntitySection>}

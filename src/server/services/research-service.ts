@@ -14,6 +14,8 @@ import { ResearchAgent } from "../agents/research-agent";
 import { Orchestrator } from "../agents/orchestrator";
 import { GeminiProvider } from "../agents/gemini-provider";
 import { TavilyProvider } from "../agents/tavily-provider";
+import { OutreachRepository } from "../repositories/outreach-repository";
+import { ReviewerAgent, OutreachAgent } from "../agents/outreach-agents";
 
 export async function researchWorkflow(workflowId: string, request: ResearchRequest) {
   const id = recordIdSchema.safeParse(workflowId);
@@ -29,6 +31,8 @@ export async function researchWorkflow(workflowId: string, request: ResearchRequ
   const agent = new ResearchAgent(new TavilyProvider(), analysis, new SupabaseResearchCache(admin, workspace.id), undefined, analysis);
   const orchestrator = new Orchestrator({ getWorkflowById: workflows.getWorkflowById.bind(workflows),
     listWorkflowTasks: workflows.listWorkflowTasks.bind(workflows), listWorkspaceRuns: reads.listWorkspaceRuns.bind(reads) },
-    new AgentRunService(repository), new EventService(new AgentEventRepository(admin)), new AgentRuntime(null, undefined, agent), repository);
+    new AgentRunService(repository), new EventService(new AgentEventRepository(admin)),
+    new AgentRuntime(null, undefined, agent, new ReviewerAgent(analysis), new OutreachAgent(analysis)), repository,
+    new OutreachRepository(admin), new AgentRunService(new OutreachRepository(admin)));
   return orchestrator.researchWorkflow({ userId: user.id, workspaceId: workspace.id, workflowId: id.data, retry: parsed.data.retry });
 }

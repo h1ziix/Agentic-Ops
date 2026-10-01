@@ -12,7 +12,7 @@ import { AppError } from "../errors";
 const transitionSummarySchema = z.string().trim().min(1).max(500).optional();
 
 export function titleFromGoal(goal: string): string {
-  const firstClause = goal.trim().split(/[.!?\n]/)[0].trim();
+  const firstClause = goal.trim().split(/[!?\n]|\.(?:\s|$)/)[0].trim();
   const concise = firstClause.split(/\s+(?:that|where|which|and prepare|and draft|and generate)\b/i)[0];
   if (concise.length <= 76) return concise;
   return `${concise.slice(0, 72).replace(/\s+\S*$/, "").trimEnd()}…`;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import { ArrowUpRight, CheckCheck, Inbox, LockKeyhole, Mail } from "lucide-react";
@@ -14,23 +15,30 @@ import { cn } from "@/lib/utils";
 import type { ActionContentEdit } from "@/lib/validation/approval";
 
 export default function ApprovalsPage() {
+  return <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>}><ApprovalInbox /></Suspense>;
+}
+
+function ApprovalInbox() {
   const { approvals, workflows, setApprovalStatus, hydrated, mode } = useDemoStore();
-  const [view, setView] = useState<"pending" | "reviewed">("pending");
+  const requestedId = useSearchParams().get("approval");
+  const requested = approvals.find((approval) => approval.id === requestedId);
+  const [chosenView, setView] = useState<"pending" | "reviewed" | null>(null);
+  const view = chosenView ?? (requested && requested.status !== "pending" ? "reviewed" : "pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const reduced = useReducedMotion();
   const pending = approvals.filter((approval) => approval.status === "pending");
   const reviewed = approvals.filter((approval) => approval.status !== "pending");
   const visible = view === "pending" ? pending : reviewed;
-  const selected = visible.find((approval) => approval.id === selectedId) ?? visible[0];
-  const messagesHeld = pending.reduce((total, approval) => total + approval.proposedActions.length, 0);
+  const selected = visible.find((approval) => approval.id === (selectedId ?? requestedId)) ?? visible[0];
+  const messagesHeld = pending.reduce((total, approval) => total + approval.proposedActions.filter((action) => ["pending_approval", "waiting_for_approval"].includes(action.status)).length, 0);
   const workflowTitles = new Map(workflows.map((workflow) => [workflow.id, workflow.title]));
 
-  async function decide(status: "approved" | "rejected", edits: ActionContentEdit[]) {
+  async function decide(status: "approved" | "rejected", edits: ActionContentEdit[], actionIds?: string[]) {
     if (!selected) return;
-    await setApprovalStatus(selected.id, status, edits);
-    setNotice(`${selected.proposedActions.length} drafts ${status}. Decision recorded; no messages sent.`);
-    setSelectedId(null);
+    await setApprovalStatus(selected.id, status, edits, actionIds);
+    const count = actionIds?.length ?? selected.proposedActions.length;
+    setNotice(`${count} draft${count === 1 ? "" : "s"} ${status}. Decision recorded; no messages sent.`);
   }
 
   return (
@@ -67,7 +75,8 @@ export default function ApprovalsPage() {
                       <span className="mb-3 flex items-center justify-between"><Mail className="size-3.5 text-muted-foreground" /><StatusBadge status={approval.status} /></span>
                       <span className="block text-[13px] font-semibold">{approval.title}</span>
                       <span className="mt-1 block text-[11px] leading-5 text-muted-foreground">{workflowTitles.get(approval.workflowId)}</span>
-                      <span className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>{approval.proposedActions.length} messages</span><ArrowUpRight className="size-3.5" /></span>
+                      <span className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground"><span>{approval.proposedActions.length} drafts · {approval.proposedActions.filter((item) => !item.recipientEmail).length} recipients missing</span><ArrowUpRight className="size-3.5 shrink-0" /></span>
+                      <span className="mt-2 block truncate text-[10px] text-muted-foreground">{approval.proposedActions.map((item) => item.metadata?.company.name ?? item.recipientName).join(', ')}</span>
                     </motion.button>)}
                   </AnimatePresence>
                 </div>

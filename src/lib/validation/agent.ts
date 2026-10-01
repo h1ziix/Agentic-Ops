@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const agentTypeSchema = z.enum(["planner", "researcher", "reviewer", "executor"]);
+export const agentTypeSchema = z.enum(["planner", "researcher", "reviewer", "outreach", "executor"]);
 export const agentStatusSchema = z.enum(["queued", "running", "completed", "failed", "cancelled"]);
 export const agentMetricsSchema = z.object({
   durationMs: z.number().int().nonnegative(),

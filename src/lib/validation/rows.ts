@@ -2,6 +2,7 @@ import { z } from "zod";
 import { taskStatusSchema, workflowStatusSchema } from "./workflow";
 import { agentStatusSchema, agentTypeSchema } from "./agent";
 import { storedSourceSchema, automationOpportunitySchema, scoreComponentsSchema } from "./research";
+import { reviewerOutputSchema } from "./outreach";
 
 const id = z.uuid();
 const timestamp = z.string();
@@ -86,7 +87,9 @@ export const leadRowSchema = z.object({
   score_reason: z.string().nullable(),
   opportunity: z.string().nullable(),
   confidence: z.enum(["high", "medium", "low"]).nullable(),
-  outreach_status: z.enum(["not_started", "drafted", "waiting_approval", "approved", "sent"]),
+  outreach_status: z.enum(["not_started", "reviewing", "drafting", "draft_ready", "drafted", "waiting_approval", "approved", "rejected", "needs_more_research", "blocked_missing_recipient", "failed", "sent"]),
+  review_metadata: reviewerOutputSchema.nullable().optional(),
+  research_run_id: id.nullable().optional(),
   score_components: scoreComponentsSchema.nullable().optional(),
   created_at: timestamp,
   updated_at: timestamp,
@@ -123,6 +126,8 @@ export const agentEventTypeSchema = z.enum([
   "company_discovered", "company_researched", "lead_scored",
   "research_started", "company_research_started", "company_research_failed", "lead_qualified", "lead_rejected",
   "approval_requested", "approval_approved", "approval_rejected",
+  "review_started", "review_completed", "lead_approved_for_outreach", "lead_rejected_for_outreach", "lead_requires_more_research",
+  "outreach_draft_created", "outreach_draft_failed", "proposed_action_edited", "proposed_action_approved", "proposed_action_rejected",
   "execution_started", "execution_completed", "execution_failed", "error", "retry",
 ]);
 
@@ -164,7 +169,9 @@ export const proposedActionRowSchema = z.object({
   action_type: z.string(),
   target: jsonObject,
   payload: jsonObject,
-  status: z.enum(["waiting_for_approval", "approved", "rejected", "cancelled", "executed", "failed"]),
+  status: z.enum(["draft", "ready_for_review", "pending_approval", "waiting_for_approval", "approved", "rejected", "cancelled", "executed", "failed"]),
+  dedupe_key: z.string().nullable().optional(),
+  revision: z.number().int().optional(),
   risk_level: z.string(),
   created_at: timestamp,
   executed_at: nullableTimestamp,

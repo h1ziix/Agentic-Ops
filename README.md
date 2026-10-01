@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. Release 0.4 turns a goal into a validated plan, focused company discovery, Tavily evidence, Gemini analysis, explainable lead scores, and persisted qualified leads. Research stops after qualification; future outreach and approval tasks remain pending. Historical proposals remain readable.
+Agentic Ops is an operational workspace for sales research workflows. The existing Supabase Auth, PostgreSQL persistence, workflow services and audit history support AI planning and real company research. Release 0.5 extends validated planning and Stage 4 research with evidence review, personalized outreach drafts, proposed actions, persistent editing and human authorization. Authorized actions remain unexecuted; this release contains no email transport, CRM writer or Executor runtime. Historical proposals remain readable.
 
 ## Requirements
 
@@ -18,7 +18,7 @@ Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in `.e
 
 Set `SUPABASE_SECRET_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, and `AI_PROVIDER=gemini` on the server. Legacy Supabase projects may use `SUPABASE_SERVICE_ROLE_KEY` instead of `SUPABASE_SECRET_KEY`. These credentials are imported through server-only modules and must never have a `NEXT_PUBLIC_` prefix. Supabase's [secret keys](https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys) authorize the service-role writer. Cookie-bound reads verify identity and workspace membership before the runtime writer is constructed; the runtime RPCs also check the supplied verified user's membership.
 
-`PLANNER_MODEL` and `RESEARCH_MODEL` independently override the models. `GEMINI_MODEL` provides a shared Gemini fallback (default `gemini-3.5-flash-lite`). The model must support JSON Schema structured output. The existing OpenAI Planner remains available with `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optional `OPENAI_PLANNER_MODEL` (default `gpt-4.1-mini`). Research uses Gemini regardless of the planning provider. Model configuration lives in `src/server/agents/config.ts`; research limits live in `research-budget.ts`.
+`PLANNER_MODEL`, `RESEARCH_MODEL`, `REVIEWER_MODEL` and `OUTREACH_MODEL` independently override the models. `GEMINI_MODEL` provides a shared Gemini fallback (default `gemini-3.5-flash-lite`). The model must support JSON Schema structured output. The existing OpenAI Planner remains available with `AI_PROVIDER=openai`, `OPENAI_API_KEY`, and optional `OPENAI_PLANNER_MODEL` (default `gpt-4.1-mini`). Research uses Gemini regardless of the planning provider. Model configuration lives in `src/server/agents/config.ts`; research limits live in `research-budget.ts`.
 
 ## Apply the database schema
 
@@ -123,11 +123,11 @@ For manual end-to-end verification, sign in and create a workflow with the examp
 
 `POST /api/workflows/:id/research` accepts `{}` or `{ "retry": true }`. The endpoint verifies the same-origin request, Supabase session, workspace membership, workflow state and task dependencies before any paid request. It extends the existing Orchestrator, AgentRuntime, AgentRunService and EventService. It executes one bounded task or company per request. The visible workflow detail screen continues requests sequentially and polls persisted state; reopening an unfinished workflow resumes execution. This release has no background worker, so navigating away stops continuation after the current request.
 
-Only `define_target_profile`, `discover_companies`, `research_companies`, `identify_opportunities`, and `score_leads` execute. Other planned tasks remain pending. Completion pauses the workflow at the research boundary when future tasks exist, or completes it when all tasks are supported. Progress is the percentage of actual completed tasks.
+Research executes `define_target_profile`, `discover_companies`, `research_companies`, `identify_opportunities`, and `score_leads`. After those tasks complete, the same Orchestrator continues supported Stage 5 tasks in dependency order. It respects intentional pauses. Legacy plans that already requested outreach receive a Reviewer prerequisite; research-only goals never acquire an outreach task. Progress is the percentage of actual completed tasks, including the pending future execution task in the denominator.
 
 The existing Tavily and Gemini adapters remain server-only. Discovery uses 2–3 focused queries and extracts at most the requested number of source-supported companies. Directory candidates may have an unknown website; an additional focused identity lookup must establish a supported official domain before research. Domain-scoped company searches collect bounded snippets. Original URLs and retrieval times are retained in a workspace-scoped, server-only cache for 24 hours. Cache writes precede analysis so retries reuse search evidence.
 
-Gemini sees goals, ICP and snippets as untrusted data, with no command execution or independent browsing tools. Zod validates profiles, facts, exact evidence quotes, citation IDs, opportunities, URLs and qualification. Unknown fields stay null. Opportunities are hypotheses rather than verified customer requirements. Only cited sources persist with the company. No contacts, outreach content, approval proposals or external actions are generated.
+Gemini sees goals, ICP and snippets as untrusted data, with no command execution or independent browsing tools. Zod validates profiles, facts, exact evidence quotes, citation IDs, opportunities, URLs and qualification. Unknown fields stay null. Opportunities are hypotheses rather than verified customer requirements. Only cited sources persist with the company. Research does not establish contacts or generate outreach. Stage 5 consumes the immutable workflow-specific research result; a later workflow updating the workspace company cannot change its evidence.
 
 The rubric totals 100: ICP fit 25, automation potential 30, operational signals 20, evidence quality 15, and public reachability/context 10. Server validation checks component bounds and their sum. Qualification requires at least 60 overall, 15 ICP-fit points and 7 evidence-quality points. Confidence reflects evidence quality and is reduced when support is weak. Only qualified assessments create or update leads, initially `qualified` with outreach `not_started`.
 
@@ -149,4 +149,25 @@ After a **paid, real** workflow is created and executed from the UI, verify its 
 npm run verify:research -- --workflow WORKFLOW_UUID
 ```
 
-This verifies completed planning/research tasks, actual web-search events, researched companies, qualified leads, score components, citations, deduplication, task progress and the absence of outreach/approvals. It writes `output/research/stage4-verification.json` for local inspection. Keep generated reports out of source control. Finish with typecheck, lint, tests, build and `verify:client-secrets`.
+This verifies completed planning/research tasks, actual web-search events, researched companies, qualified leads, score components, citations, deduplication and task progress. For research-only goals it also checks the absence of outreach/approvals. It writes `output/research/stage4-verification.json` for local inspection. Keep generated reports out of source control. Finish with typecheck, lint, tests, build and `verify:client-secrets`.
+
+## Stage 5 review, outreach and approval
+
+The existing research endpoint continues `review_qualified_leads`, `generate_outreach`, then `request_approval`. Reviewer and Outreach use Gemini structured output with separate server-side prompts and centralized model overrides. They receive validated research and accepted evidence, without browsing or external action tools. Each run persists its input/output, status, model, timings, observed tokens, bounded retries and linked audit events.
+
+The Reviewer checks evidence independently of the score. It may approve, reject or request more research. Unknown or rewritten evidence is rejected; approval requires sufficient exact facts, an official company domain or its subdomain, adequate confidence and supported personalization. Unsupported buying intent and internal needs remain uncertainties. Only accepted leads reach Outreach. Invalid results fail one lead and preserve successful results. Transient provider failures receive at most one retry; validation errors never automatically regenerate. Expired claims and database locks prevent duplicate active work.
+
+The Outreach Agent selects accepted evidence and a concise call to action; server composition restricts factual content to those exact claims and labels the proposed opportunity as a hypothesis. Stage 4 has no verified-contact capability, so recipient name/email remain null. Drafts can be reviewed and authorized with `blocked_missing_recipient`; authorization does not invent a recipient or make an action executable.
+
+`publish_outreach_approval` validates saved run provenance and atomically creates one approval and its proposed actions, moves the workflow to `waiting_for_approval`, and records the gate event. A unique workspace/dedupe key combines workflow, lead, channel, task and generation version. Repeated continuation reuses saved runs and approval records. Empty outcomes finish preparation with no actions and cancel unused execution. There is no infinite approval wait.
+
+Live edits save immediately to Supabase through `edit_proposed_email`. Optimistic revisions reject stale overwrites; saving does not change approval state. `resolve_outreach_actions` supports an individual draft, eligible subset or whole batch. Partial decisions leave the batch pending. After all decisions, any authorization completes the approval task and leaves future execution pending with `ready_for_execution`; missing recipients stay blocked. An entirely rejected batch completes with a rejected outcome and cancels unused execution. Decisions and edits append audit events in the same transaction. The UI distinguishes human authorization from recipient readiness and sending.
+
+Preparation RPCs are service-role-only and verify workspace membership. User editing/decisions use authenticated membership checks. Legacy loose proposal-creation and decision RPCs are revoked from authenticated users. No Gmail/email API or executor exists in this path. No provider secrets or hidden chain-of-thought are persisted in public records.
+
+```powershell
+npx supabase@latest db query --linked --file supabase/tests/outreach_runtime.sql
+npm run verify:outreach -- --workflow WORKFLOW_UUID
+```
+
+The SQL fixtures roll back and make no paid calls. The verification command reads a real completed preparation workflow without new provider calls, checking accepted evidence, linked runs/actions, unique drafts, edits, audit, task progress and the execution boundary. It writes an ignored report under `output/outreach/`. Run the research verifier on the same workflow to inspect Stage 4 results. The visible workflow page drives continuation; navigation away stops it after the current bounded request, and reopening resumes pending work.

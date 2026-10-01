@@ -2,20 +2,22 @@ import { safePublicUrl } from "@/lib/format";
 import type { AgentName, AgentEvent, Approval, Company, Lead, StepStatus, WorkspaceViewData } from "@/types/domain";
 import type { AgentRunRow, WorkflowTaskRow, WorkspaceSnapshot } from "@/types/persistence";
 import { plannerTaskContextSchema, validatedPlannerOutputSchema } from "@/lib/validation/planner";
-import { researchAnalysisSchema } from "@/lib/validation/research";
+import { researchAnalysisSchema, researchOutputSchema } from "@/lib/validation/research";
+import { emailActionPayloadSchema } from "@/lib/validation/outreach";
 
 const stageDefinitions = [
   { label: "Planning", taskTypes: ["define_target_profile"] },
   { label: "Company Discovery", taskTypes: ["discover_companies"] },
   { label: "Research", taskTypes: ["research_companies"] },
   { label: "Qualification", taskTypes: ["qualify_opportunities", "identify_opportunities", "score_leads"] },
+  { label: "Lead Review", taskTypes: ["review_qualified_leads"] },
   { label: "Outreach", taskTypes: ["prepare_outreach", "generate_outreach"] },
   { label: "Approval", taskTypes: ["request_approval"] },
-  { label: "Execution", taskTypes: [] },
+  { label: "Execution", taskTypes: ["execute_approved_actions"] },
 ] as const;
 
 function agentName(type: AgentRunRow["agent_type"]): AgentName {
-  return ({ planner: "Planner Agent", researcher: "Research Agent", reviewer: "Reviewer Agent", executor: "Executor Agent" })[type] as AgentName;
+  return ({ planner: "Planner Agent", researcher: "Research Agent", reviewer: "Reviewer Agent", outreach: "Outreach Agent", executor: "Executor Agent" })[type] as AgentName;
 }
 
 function stringField(value: Record<string, unknown>, ...keys: string[]): string | null {
@@ -28,6 +30,7 @@ function stringField(value: Record<string, unknown>, ...keys: string[]): string 
 
 function stageStatus(tasks: WorkflowTaskRow[]): StepStatus {
   if (!tasks.length) return "waiting";
+  if (tasks.every((task) => task.status === "cancelled")) return "cancelled";
   if (tasks.some((task) => task.status === "failed")) return "failed";
   if (tasks.some((task) => task.status === "running")) return "running";
   if (tasks.every((task) => task.status === "completed")) return "completed";
@@ -103,7 +106,11 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     };
   });
 
-  const leads: Lead[] = snapshot.leads.map((row) => ({
+  const leads: Lead[] = snapshot.leads.map((row) => {
+    const researchRun = snapshot.agentRuns.find((run) => run.workflow_id === row.workflow_id && run.agent_type === "researcher"
+      && run.status === "completed" && typeof run.output === "object" && run.output !== null && "companyId" in run.output && run.output.companyId === row.company_id);
+    const research = researchOutputSchema.safeParse(researchRun?.output && typeof researchRun.output === "object" && "result" in researchRun.output ? researchRun.output.result : undefined);
+    return ({
     id: row.id,
     companyId: row.company_id,
     workflowId: row.workflow_id,
@@ -115,7 +122,14 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     outreachStatus: row.outreach_status,
     updatedAt: row.updated_at,
     scoreComponents: row.score_components ?? undefined,
-  }));
+    review: row.review_metadata ?? undefined,
+    researchContext: research.success ? { ...research.data.analysis.company,
+      industry: research.data.analysis.company.industry ?? "Unclassified",
+      location: research.data.analysis.company.location ?? "Location not recorded",
+      employeeEstimate: research.data.analysis.company.employeeEstimate ?? "Not recorded",
+      sourceUrls: research.data.sources.map((source) => source.url),
+      sources: research.data.sources.map((source) => ({ url: source.url, title: source.title, type: "search_result" as const, accessedAt: source.retrievedAt })) } : undefined,
+  }); });
 
   const approvals: Approval[] = snapshot.approvals.map((row) => {
     const actions = snapshot.proposedActions.filter((action) => action.approval_id === row.id);
@@ -123,7 +137,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     return {
       id: row.id,
       workflowId: row.workflow_id,
-      title: row.title,
+      title: row.type === "stage5_outreach" ? `Review ${actions.length} outreach draft${actions.length === 1 ? "" : "s"}` : row.title,
       description: row.description,
       actionType: actions[0]?.action_type ?? row.type,
       status: row.status,
@@ -131,7 +145,9 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       requestedAt: row.created_at,
       riskLabel: row.risk_level.charAt(0).toUpperCase() + row.risk_level.slice(1),
       recipientCount: actions.length,
-      proposedActions: actions.map((action) => ({
+      proposedActions: actions.map((action) => {
+        const payload = emailActionPayloadSchema.safeParse(action.payload);
+        return ({
         id: action.id,
         leadId: stringField(action.target, "lead_id", "leadId") ?? "",
         companyId: stringField(action.target, "company_id", "companyId") ?? "",
@@ -141,7 +157,14 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
         subject: stringField(action.payload, "subject") ?? "Untitled proposal",
         body: stringField(action.payload, "body") ?? "No message body is available.",
         status: action.status,
-      })),
+        revision: action.revision ?? 0,
+        evidenceReferences: payload.success ? payload.data.evidenceReferences : [],
+        metadata: payload.success ? payload.data.generationMetadata : undefined,
+        warnings: payload.success ? payload.data.warnings : [],
+        executionReadiness: payload.success ? payload.data.executionReadiness : stringField(action.target, "recipientEmail", "recipient_email", "email") ? "ready" as const : "blocked_missing_recipient" as const,
+        dedupeKey: action.dedupe_key ?? undefined,
+        riskLevel: action.risk_level,
+      }); }),
     };
   });
 
@@ -150,7 +173,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     const kind = row.event_type;
     const category = kind.includes("failed") || kind === "error" ? "error" as const
       : kind.startsWith("tool_") || kind === "model_request_started" ? "tool" as const
-      : kind.startsWith("approval_") ? "approval" as const
+      : kind.startsWith("approval_") || kind.startsWith("proposed_action_") ? "approval" as const
       : kind.startsWith("workflow_") ? "workflow" as const
       : "agent" as const;
     const status = kind.includes("failed") || kind === "error" ? "failed" as const
@@ -167,6 +190,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       agent: run ? agentName(run.agent_type) : undefined,
       title: run && ["agent_started", "agent_completed", "agent_failed"].includes(kind)
         ? `${agentName(run.agent_type)} ${kind.slice(6)}`
+        : kind === "outreach_draft_failed" && run?.agent_type === "reviewer" ? "Evidence review failed"
         : eventTitles[kind] ?? kind.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase()),
       description: companyName && ["lead_qualified", "lead_rejected"].includes(kind) && row.summary.startsWith("Company ")
         ? `${companyName} ${row.summary.slice(8)}` : row.summary,
@@ -197,7 +221,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       targetCompanies: row.target_companies,
       companyCount: companyIds.size,
       qualifiedLeadCount: relatedLeads.filter((lead) => ["qualified", "outreach_ready", "waiting_approval", "contacted", "responded", "converted"].includes(lead.status)).length,
-      pendingApprovalCount: pendingApprovals.reduce((total, approval) => total + approval.proposedActions.length, 0),
+      pendingApprovalCount: pendingApprovals.reduce((total, approval) => total + approval.proposedActions.filter((action) => ["pending_approval", "waiting_for_approval"].includes(action.status)).length, 0),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       startedAt: row.started_at ?? undefined,
@@ -217,7 +241,9 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     status: row.status,
     type: row.type,
     error: typeof row.error === "object" && row.error !== null && "message" in row.error && typeof row.error.message === "string" ? row.error.message : undefined,
-    agent: runsByTask.get(row.id) ? agentName(runsByTask.get(row.id)!.agent_type) : "Unassigned" as const,
+    agent: runsByTask.get(row.id) ? agentName(runsByTask.get(row.id)!.agent_type)
+      : row.type === "review_qualified_leads" ? "Reviewer Agent" as const
+      : row.type === "generate_outreach" ? "Outreach Agent" as const : "Unassigned" as const,
     completedAt: row.completed_at ?? undefined,
     ...(context.success ? context.data : {}),
   }); });
@@ -233,11 +259,11 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     if (definition.label === "Approval") {
       const decisions = approvals.filter((approval) => approval.workflowId === workflow.id);
       status = decisions.some((approval) => approval.status === "pending") ? "running"
-        : decisions.some((approval) => approval.status === "rejected") ? "failed"
+        : decisions.some((approval) => approval.status === "rejected") ? "completed"
         : decisions.length > 0 && decisions.every((approval) => approval.status === "approved" || approval.status === "executed") ? "completed"
-        : tasks.some((task) => task.status === "failed") ? "failed" : "waiting";
+        : stageStatus(tasks);
     }
-    if (index === stageDefinitions.length - 1) status = workflow.status === "completed" ? "completed" : "waiting";
+    if (index === stageDefinitions.length - 1) status = stageStatus(tasks);
     return { id: `${workflow.id}-stage-${index + 1}`, workflowId: workflow.id, label: definition.label, order: index + 1, status };
   }));
 
@@ -266,6 +292,13 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       return { id: run.id, workflowId: run.workflow_id, taskId: run.workflow_task_id, status: run.status, model: run.model, summary,
         startedAt: run.started_at, completedAt: run.completed_at, durationMs: run.duration_ms ?? null, retryCount: run.retry_count ?? 0,
         taskCount: run.task_count ?? 0, totalTokens: run.total_tokens ?? null, error };
+    }),
+    preparationRuns: snapshot.agentRuns.filter((run) => run.agent_type === "reviewer" || run.agent_type === "outreach").map((run) => {
+      const error = typeof run.error === "object" && run.error !== null && "message" in run.error && typeof run.error.message === "string" ? run.error.message : undefined;
+      return { id: run.id, workflowId: run.workflow_id, taskId: run.workflow_task_id, status: run.status, model: run.model,
+        agent: run.agent_type === "reviewer" ? "Reviewer Agent" as const : "Outreach Agent" as const,
+        startedAt: run.started_at, completedAt: run.completed_at, durationMs: run.duration_ms ?? null,
+        retryCount: run.retry_count ?? 0, taskCount: run.task_count ?? 0, totalTokens: run.total_tokens ?? null, error };
     }),
   };
 }

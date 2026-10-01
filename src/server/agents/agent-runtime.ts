@@ -7,13 +7,27 @@ import { PlannerAgent } from "./planner-agent";
 import type { TokenUsage } from "./planner-agent";
 import type { ResearchAgent } from "./research-agent";
 import type { ResearchInput, WorkflowResearchInput, TargetProfile } from "@/lib/validation/research";
+import { runPreparation, type ReviewerAgent, type OutreachAgent } from "./outreach-agents";
+import type { ReviewerInput, ReviewerOutput, verifiedRecipientSchema } from "@/lib/validation/outreach";
+import type { z } from "zod";
 
 export type RuntimeEvent = (type: AgentEventType, summary: string, metadata: Record<string, string | number>) => Promise<void>;
 
 /** One bounded execution policy shared by future typed agents, without a generic framework. */
 export class AgentRuntime {
   constructor(private readonly planner: PlannerAgent | null, private readonly wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
-    private readonly researcher?: ResearchAgent) {}
+    private readonly researcher?: ResearchAgent, private readonly reviewer?: ReviewerAgent,
+    private readonly outreach?: OutreachAgent) {}
+
+  review(input: ReviewerInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
+    if (!this.reviewer) throw new PlannerError("ai_configuration", false);
+    return runPreparation(() => this.reviewer!.review(input, model), record, metrics, this.wait, model);
+  }
+  draft(input: ReviewerInput, review: ReviewerOutput, recipient: z.infer<typeof verifiedRecipientSchema>,
+    model: string, record: RuntimeEvent, metrics: AgentMetrics) {
+    if (!this.outreach) throw new PlannerError("ai_configuration", false);
+    return runPreparation(() => this.outreach!.draft(input, review, recipient, model), record, metrics, this.wait, model);
+  }
 
   researchProfile(input: WorkflowResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
     if (!this.researcher) throw new PlannerError("ai_configuration", false);

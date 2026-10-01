@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useDemoStore } from "@/components/app/demo-store";
 import type { Workflow, WorkspaceViewData } from "@/types/domain";
 import { z } from "zod";
-const responseSchema = z.object({ status: z.enum(["more", "in_progress", "research_complete", "failed"]), runId: z.uuid().optional() });
+const responseSchema = z.object({ status: z.enum(["more", "in_progress", "research_complete", "failed", "waiting_for_approval", "preparation_complete"]), runId: z.uuid().optional() });
 const failureSchema = z.object({ error: z.string() });
 
 export function useWorkflowResearch(workflow: Workflow | undefined) {
@@ -42,7 +42,7 @@ export function useWorkflowResearch(workflow: Workflow | undefined) {
           throw new Error(failure.success ? failure.data.error : "Research could not continue. Resume after checking the trace.");
         }
         const saved = await refresh(id);
-        if (result.data.status === "research_complete" || saved?.status !== "running") break;
+        if (["research_complete", "waiting_for_approval", "preparation_complete"].includes(result.data.status) || saved?.status !== "running") break;
         if (result.data.status === "failed") throw new Error("A research task needs attention. Successful company results are retained.");
         if (result.data.status === "in_progress") await new Promise<void>((resolve) => setTimeout(resolve, 2000));
       }

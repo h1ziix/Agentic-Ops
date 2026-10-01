@@ -6,21 +6,6 @@ import type { ServerSupabase } from "../auth/context";
 import { AppError, fromDatabaseError } from "../errors";
 import { parseDatabaseResult } from "./parse";
 
-export interface RequestApprovalParameters {
-  workspaceId: string;
-  workflowId: string;
-  type: string;
-  title: string;
-  description: string;
-  riskLevel: "low" | "medium" | "high";
-  actions: Array<{
-    action_type: string;
-    target: Record<string, unknown>;
-    payload: Record<string, unknown>;
-    risk_level?: "low" | "medium" | "high";
-  }>;
-}
-
 export class ApprovalRepository {
   constructor(private readonly supabase: ServerSupabase) {}
 
@@ -47,29 +32,22 @@ export class ApprovalRepository {
     return data ? parseDatabaseResult(approvalRowSchema, data, "get_approval") : null;
   }
 
-  /** SQL creates the approval, proposed actions, and audit event atomically. */
-  async requestApproval(input: RequestApprovalParameters): Promise<string> {
-    const { data, error } = await this.supabase.rpc("request_approval", {
-      p_workspace_id: input.workspaceId,
-      p_workflow_id: input.workflowId,
-      p_type: input.type,
-      p_title: input.title,
-      p_description: input.description,
-      p_risk_level: input.riskLevel,
-      p_actions: input.actions,
+  /** Decision only: this RPC never executes proposed actions. */
+  async editAction(actionId: string, subject: string, body: string, revision: number): Promise<ProposedActionRow> {
+    const { data, error } = await this.supabase.rpc("edit_proposed_email", {
+      p_action_id: actionId, p_subject: subject, p_body: body, p_revision: revision,
     });
-    if (error) throw fromDatabaseError("request_approval", error);
-    const result = z.uuid().safeParse(data);
-    if (!result.success) throw new AppError("database");
-    return result.data;
+    if (error) throw fromDatabaseError("edit_proposed_email", error);
+    return parseDatabaseResult(proposedActionRowSchema, data, "edit_proposed_email");
   }
 
-  /** Decision only: this RPC never executes proposed actions. */
-  async resolveApproval(approvalId: string, decision: ApprovalDecision, edits: ActionContentEdit[] = []): Promise<ApprovalRow> {
-    const { data, error } = await this.supabase.rpc("resolve_approval", {
+  async resolveApproval(approvalId: string, decision: ApprovalDecision, edits: ActionContentEdit[] = [], actionIds?: string[]): Promise<ApprovalRow> {
+    // Live drafts must be saved independently before a decision; retain the old input contract for demo callers.
+    if (edits.length) throw new AppError("validation", "Save draft edits before making a decision.");
+    const { data, error } = await this.supabase.rpc("resolve_outreach_actions", {
       p_approval_id: approvalId,
       p_decision: decision,
-      p_action_edits: edits.map(({ actionId, subject, body }) => ({ action_id: actionId, subject, body })),
+      p_action_ids: actionIds ?? null,
     });
     if (error) throw fromDatabaseError("resolve_approval", error);
     return parseDatabaseResult(approvalRowSchema, data, "resolve_approval");

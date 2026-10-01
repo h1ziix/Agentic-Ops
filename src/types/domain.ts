@@ -11,12 +11,13 @@ export type WorkflowStatus =
   | "failed"
   | "cancelled";
 
-export type StepStatus = "completed" | "running" | "waiting" | "failed";
+export type StepStatus = "completed" | "running" | "waiting" | "failed" | "cancelled";
 export type TaskStatus = "completed" | "running" | "pending" | "blocked" | "failed" | "cancelled";
 export type AgentName =
   | "Planner Agent"
   | "Research Agent"
   | "Reviewer Agent"
+  | "Outreach Agent"
   | "Executor Agent"
   | "Unassigned"
   | "Workspace";
@@ -135,6 +136,13 @@ export type LeadStatus =
 
 export type OutreachStatus =
   | "not_started"
+  | "reviewing"
+  | "drafting"
+  | "draft_ready"
+  | "rejected"
+  | "needs_more_research"
+  | "blocked_missing_recipient"
+  | "failed"
   | "drafted"
   | "waiting_approval"
   | "approved"
@@ -152,6 +160,8 @@ export interface Lead {
   outreachStatus: OutreachStatus;
   updatedAt: string;
   scoreComponents?: import("zod").z.infer<typeof import("@/lib/validation/research").scoreComponentsSchema>;
+  review?: import("@/lib/validation/outreach").ReviewerOutput;
+  researchContext?: Pick<Company, "description" | "industry" | "location" | "employeeEstimate" | "researchSummary" | "sourceUrls" | "sources">;
 }
 
 export type ApprovalStatus =
@@ -162,6 +172,9 @@ export type ApprovalStatus =
   | "executed";
 
 export type ProposedActionStatus =
+  | "draft"
+  | "ready_for_review"
+  | "pending_approval"
   | "waiting_for_approval"
   | "approved"
   | "rejected"
@@ -179,6 +192,13 @@ export interface ProposedAction {
   subject: string;
   body: string;
   status: ProposedActionStatus;
+  revision?: number;
+  evidenceReferences?: import("zod").z.infer<typeof import("@/lib/validation/outreach").evidenceReferenceSchema>[];
+  metadata?: import("zod").z.infer<typeof import("@/lib/validation/outreach").emailActionPayloadSchema>["generationMetadata"];
+  executionReadiness?: "ready" | "blocked_missing_recipient";
+  warnings?: string[];
+  dedupeKey?: string;
+  riskLevel?: string;
 }
 
 export interface Approval {
@@ -244,4 +264,5 @@ export interface WorkspaceViewData {
   activity: AgentEvent[];
   plannerRuns?: PlannerRun[];
   researchRuns?: ResearchRun[];
+  preparationRuns?: (ResearchRun & { agent: "Reviewer Agent" | "Outreach Agent" })[];
 }

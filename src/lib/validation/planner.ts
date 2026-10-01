@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const plannerTaskTypeSchema = z.enum([
   "define_target_profile", "discover_companies", "research_companies",
-  "identify_opportunities", "score_leads", "generate_outreach", "request_approval",
+  "identify_opportunities", "score_leads", "review_qualified_leads", "generate_outreach", "request_approval",
 ]);
 
 const taskKey = z.string().regex(/^[a-z][a-z0-9_]{1,63}$/);

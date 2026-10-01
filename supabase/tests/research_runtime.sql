@@ -80,7 +80,7 @@ begin
     then raise exception 'Stage 4 must not create outreach or approvals'; end if;
   perform public.finish_research_workflow(v_workspace,v_workflow,v_user);
   perform public.finish_research_workflow(v_workspace,v_workflow,v_user);
-  if not exists(select 1 from public.workflows where id=v_workflow and status='paused' and progress=80)
+  if not exists(select 1 from public.workflows where id=v_workflow and status='running' and progress=80)
     or not exists(select 1 from public.workflow_tasks where workflow_id=v_workflow and type='request_approval' and status='pending') then raise exception 'Release boundary/progress failed'; end if;
   if not exists(select 1 from public.companies where id=v_company and jsonb_array_length(sources)=1 and last_researched_at is not null) then raise exception 'Structured sources not saved'; end if;
   -- Same company in another workflow must reuse the canonical workspace record.

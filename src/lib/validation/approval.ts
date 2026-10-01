@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const approvalMessageSchema = z.object({
-  subject: z.string().trim().min(1, "Add a subject before saving.").max(200, "Keep the subject under 200 characters."),
+  subject: z.string().trim().min(1, "Add a subject before saving.").max(200, "Keep the subject under 200 characters.").refine((value) => !/[\r\n]/.test(value), "Keep the subject on one line."),
   body: z.string().trim().min(10, "Add a message of at least 10 characters.").max(10_000, "Keep the message under 10,000 characters."),
 });
 
@@ -21,3 +21,6 @@ export const actionContentEditsSchema = z.array(actionContentEditSchema).max(100
 });
 
 export type ActionContentEdit = z.infer<typeof actionContentEditSchema>;
+
+export const saveActionEditSchema = actionContentEditSchema.extend({ revision: z.number().int().nonnegative() }).strict();
+export const actionSelectionSchema = z.array(z.uuid()).min(1).max(100).refine((ids) => new Set(ids).size === ids.length, "Select each action once.");

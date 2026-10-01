@@ -1,0 +1,22 @@
+-- Enum additions commit separately before Stage 5 functions use them.
+alter type public.agent_type add value if not exists 'outreach';
+alter type public.outreach_status add value if not exists 'reviewing';
+alter type public.outreach_status add value if not exists 'drafting';
+alter type public.outreach_status add value if not exists 'draft_ready';
+alter type public.outreach_status add value if not exists 'rejected';
+alter type public.outreach_status add value if not exists 'needs_more_research';
+alter type public.outreach_status add value if not exists 'blocked_missing_recipient';
+alter type public.outreach_status add value if not exists 'failed';
+alter type public.proposed_action_status add value if not exists 'draft';
+alter type public.proposed_action_status add value if not exists 'ready_for_review';
+alter type public.proposed_action_status add value if not exists 'pending_approval';
+alter type public.agent_event_type add value if not exists 'review_started';
+alter type public.agent_event_type add value if not exists 'review_completed';
+alter type public.agent_event_type add value if not exists 'lead_approved_for_outreach';
+alter type public.agent_event_type add value if not exists 'lead_rejected_for_outreach';
+alter type public.agent_event_type add value if not exists 'lead_requires_more_research';
+alter type public.agent_event_type add value if not exists 'outreach_draft_created';
+alter type public.agent_event_type add value if not exists 'outreach_draft_failed';
+alter type public.agent_event_type add value if not exists 'proposed_action_edited';
+alter type public.agent_event_type add value if not exists 'proposed_action_approved';
+alter type public.agent_event_type add value if not exists 'proposed_action_rejected';

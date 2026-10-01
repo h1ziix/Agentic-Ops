@@ -41,13 +41,14 @@ type DemoStore = {
   researchRuns: ResearchRun[];
   updateWorkflow: (view: WorkspaceViewData) => void;
   createWorkflow: (input: NewWorkflowInput) => Promise<string>;
-  setApprovalStatus: (id: string, status: "approved" | "rejected", edits?: ActionContentEdit[]) => Promise<void>;
+  setApprovalStatus: (id: string, status: "approved" | "rejected", edits?: ActionContentEdit[], actionIds?: string[]) => Promise<void>;
+  preparationRuns: NonNullable<WorkspaceViewData["preparationRuns"]>;
 };
 
 const DemoStoreContext = createContext<DemoStore | null>(null);
 
 function titleFromGoal(goal: string) {
-  const firstClause = goal.trim().split(/[.!?\n]/)[0].trim();
+  const firstClause = goal.trim().split(/[!?\n]|\.(?:\s|$)/)[0].trim();
   const concise = firstClause.split(/\s+(?:that|where|which|and prepare|and draft|and generate)\b/i)[0];
   if (concise.length <= 76) return concise;
   return `${concise.slice(0, 72).replace(/\s+\S*$/, "").trimEnd()}…`;
@@ -122,8 +123,10 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       activity: [...updates.flatMap((view) => view.activity), ...initialData.activity.filter((row) => !ids.has(row.workflowId))].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
       plannerRuns: [...updates.flatMap((view) => view.plannerRuns ?? []), ...(initialData.plannerRuns ?? []).filter((row) => !ids.has(row.workflowId))],
       researchRuns: [...updates.flatMap((view) => view.researchRuns ?? []), ...(initialData.researchRuns ?? []).filter((row) => !ids.has(row.workflowId))],
+      preparationRuns: [...updates.flatMap((view) => view.preparationRuns ?? []), ...(initialData.preparationRuns ?? []).filter((row) => !ids.has(row.workflowId))],
       companies: [...updatedCompanies.values()],
       leads: [...updates.flatMap((view) => view.leads), ...initialData.leads.filter((row) => !ids.has(row.workflowId))],
+      approvals: [...updates.flatMap((view) => view.approvals), ...initialData.approvals.filter((row) => !ids.has(row.workflowId))],
       updateWorkflow: (view) => setWorkflowUpdates((current) => ({ ...current, [view.workflows[0].id]: view })),
       mode: "live",
       hydrated: true,
@@ -134,8 +137,8 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
         router.refresh();
         return result.id;
       },
-      setApprovalStatus: async (id, status, edits = []) => {
-        const result = await resolveApprovalAction(id, status, edits);
+      setApprovalStatus: async (id, status, edits = [], actionIds) => {
+        const result = await resolveApprovalAction(id, status, edits, actionIds);
         if (!result.ok) throw new Error(result.error);
         router.refresh();
       },
@@ -205,6 +208,7 @@ export function DemoStoreProvider({ children, initialData }: { children: ReactNo
       activity: [...createdEvents, ...decisionEvents, ...agentActivity].sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
       plannerRuns: [],
       researchRuns: [],
+      preparationRuns: [],
       updateWorkflow: () => {},
       createWorkflow: async (input) => {
         const valid = newWorkflowSchema.parse(input);

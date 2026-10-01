@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { toWorkspaceView } from "./workspace-view";
 import { mapPlannerTasks } from "./validation/planner";
 import { examplePlan } from "@/server/agents/testing/planner-fixtures";
+import { outreachFixture } from "@/server/agents/testing/outreach-fixtures";
 import type { WorkspaceSnapshot } from "@/types/persistence";
 
 function snapshot(): WorkspaceSnapshot {
@@ -48,6 +49,14 @@ test("failed planning displays an error stage and correctly categorizes workflow
   assert.equal(view.plannerRuns?.[0].error, "Planning timed out.");
   assert.equal(view.workflows[0].errorSummary, "Planning failed.");
 });
+test("empty preparation shows completed approval and cancelled execution from task state", () => {
+  const data = snapshot();
+  data.tasks.filter((task) => task.type === "request_approval").forEach((task) => { task.status = "completed"; });
+  data.tasks.push({ ...data.tasks[0], id: randomUUID(), type: "execute_approved_actions", status: "cancelled", position: 9 });
+  const view = toWorkspaceView(data);
+  assert.equal(view.workflowStages.find((stage) => stage.label === "Approval")?.status, "completed");
+  assert.equal(view.workflowStages.find((stage) => stage.label === "Execution")?.status, "cancelled");
+});
 
 test("a canonical company belongs to every associated workflow after refresh", () => {
   const data = snapshot(); const companyId = randomUUID(); const originalWorkflow = randomUUID(); const now = data.workflows[0].created_at;
@@ -61,4 +70,17 @@ test("a canonical company belongs to every associated workflow after refresh", (
   assert.equal(view.companies.length,1);
   assert.equal(view.companies[0].workflowResearchStatuses?.[data.workflows[0].id],"failed");
   assert.equal(view.companies[0].workflowResearchStatuses?.[originalWorkflow],"researched");
+});
+test("lead evidence remains tied to its own workflow after another workflow researches the company", () => {
+  const data = snapshot(); const { research } = outreachFixture(); const companyId = randomUUID(); const leadId = randomUUID();
+  const original = data.agentRuns[0];
+  data.leads.push({ id: leadId, workspace_id: data.workspace.id, workflow_id: data.workflows[0].id, company_id: companyId,
+    status: "qualified", score: 80, score_reason: "Supported rubric", opportunity: "Intake pilot", confidence: "medium", outreach_status: "not_started", created_at: original.created_at, updated_at: original.created_at });
+  data.agentRuns.push({ ...original, id: randomUUID(), agent_type: "researcher", output: { companyId, result: research } });
+  data.agentRuns.unshift({ ...original, id: randomUUID(), workflow_id: randomUUID(), agent_type: "researcher",
+    output: { companyId, result: { ...research, analysis: { ...research.analysis, company: { ...research.analysis.company, researchSummary: "Different workflow summary" } } } } });
+  const lead = toWorkspaceView(data).leads[0];
+  assert.equal(lead.researchContext?.researchSummary, research.analysis.company.researchSummary);
+  assert.deepEqual(lead.researchContext?.sourceUrls, research.sources.map((source) => source.url));
+  assert.equal(JSON.stringify(lead.researchContext).includes(research.sources[0].content), false);
 });

@@ -10,6 +10,7 @@ next-env.d.ts
 .playwright-cli/
 output/playwright/
 output/research/
+output/outreach/
 output/*.log
 supabase/.temp/
 supabase/.branches/

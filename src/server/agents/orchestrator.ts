@@ -12,6 +12,7 @@ import { getPlannerModel } from "./config";
 import { safePlanningError } from "./errors";
 import { PLANNER_PROMPT_VERSION } from "./planner-prompt";
 import { executeResearchStep, type ResearchExecutionStore } from "./research-orchestrator";
+import { executePreparationStep, type PreparationStore } from "./outreach-orchestrator";
 
 export interface PlanningReader {
   getWorkflowById(workspaceId: string, workflowId: string): Promise<WorkflowRow | null>;
@@ -31,12 +32,18 @@ export class Orchestrator {
     private readonly events: EventService,
     private readonly runtime: AgentRuntime,
     private readonly researchStore?: ResearchExecutionStore,
+    private readonly preparationStore?: PreparationStore,
+    private readonly preparationRuns?: AgentRunService,
   ) {}
 
   async researchWorkflow(request: PlanWorkflowInput & { retry?: boolean }) {
     if (!requestSchema.safeParse({ workflowId: request.workflowId, workspaceId: request.workspaceId, userId: request.userId }).success) throw new AppError("validation");
     if (!this.researchStore) throw new AppError("ai_configuration");
-    return executeResearchStep(request, this.reader, this.runs, this.events, this.runtime, this.researchStore);
+    const result = await executeResearchStep(request, this.reader, this.runs, this.events, this.runtime, this.researchStore);
+    if (result.status === "research_complete" && this.preparationStore && this.preparationRuns) {
+      return executePreparationStep(request, this.reader, this.preparationRuns, this.events, this.runtime, this.preparationStore);
+    }
+    return result;
   }
 
   async planWorkflow(request: PlanWorkflowInput): Promise<PlanningResult> {
@@ -51,9 +58,10 @@ export class Orchestrator {
     const successful = history.find((run) => run.agent_type === "planner" && run.status === "completed");
     if (successful) {
       const plan = validatedPlannerOutputSchema.safeParse(successful.output);
-      if (!plan.success || tasks.length !== plan.data.tasks.length || mapPlannerTasks(plan.data).some((planned) => !tasks.some((task) => {
+      const plannedTasks = tasks.filter((task) => !(typeof task.input === "object" && task.input !== null && "runtimeAdded" in task.input && task.input.runtimeAdded === true));
+      if (!plan.success || plannedTasks.length !== plan.data.tasks.length || mapPlannerTasks(plan.data).some((planned) => !plannedTasks.some((task) => {
         const input = task.input;
-        return task.position === planned.position && task.type === planned.type && typeof input === "object" && input !== null
+        return task.type === planned.type && typeof input === "object" && input !== null
           && "planTaskId" in input && input.planTaskId === planned.input.planTaskId;
       }))) throw new AppError("database", "The saved plan is incomplete. Please contact your workspace administrator.");
       return { status: "completed", runId: successful.id };

@@ -64,6 +64,23 @@ const eventTitles: Record<string, string> = {
   task_started: "Task started",
   task_completed: "Task completed",
   task_failed: "Task failed",
+  automation_scheduled: "Background job scheduled",
+  automation_started: "Background job started",
+  automation_completed: "Background job completed",
+  automation_failed: "Background job failed",
+  automation_cancelled: "Future background job cancelled",
+  retry_scheduled: "Bounded retry scheduled",
+  retry_exhausted: "Retry limit reached",
+  manual_retry_requested: "Manual retry requested",
+  followup_due: "Follow-up draft preparation due",
+  followup_draft_created: "Follow-up draft ready for approval",
+  reply_check_started: "Reply monitoring started",
+  reply_detected: "Reply detected; future follow-up cancelled",
+  run_recovered: "Stale workflow run recovered",
+  run_marked_stale: "Workflow run marked stale",
+  icp_created: "ICP created", icp_updated: "ICP updated", icp_duplicated: "ICP duplicated", icp_archived: "ICP archived",
+  template_created: "Template created", template_updated: "Template updated", template_duplicated: "Template duplicated", template_archived: "Template archived",
+  workflow_created_from_icp: "Workflow started from ICP", workflow_created_from_template: "Workflow started from template",
 };
 
 /** Keeps the Stage 1 presentation components independent from database row shape. */
@@ -111,7 +128,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
   const leads: Lead[] = snapshot.leads.map((row) => {
     const researchRun = snapshot.agentRuns.find((run) => run.workflow_id === row.workflow_id && run.agent_type === "researcher"
       && run.status === "completed" && typeof run.output === "object" && run.output !== null && "companyId" in run.output && run.output.companyId === row.company_id);
-    const research = researchOutputSchema.safeParse(researchRun?.output && typeof researchRun.output === "object" && "result" in researchRun.output ? researchRun.output.result : undefined);
+    const research = researchOutputSchema.safeParse(row.research_snapshot ?? (researchRun?.output && typeof researchRun.output === "object" && "result" in researchRun.output ? researchRun.output.result : undefined));
     return ({
     id: row.id,
     companyId: row.company_id,
@@ -122,7 +139,9 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
     opportunity: row.opportunity ?? "Opportunity assessment pending",
     confidence: row.confidence,
     outreachStatus: row.outreach_status,
+    replyStatus: snapshot.repliedLeadIds?.includes(row.id) ? "detected" : "unavailable",
     updatedAt: row.updated_at,
+    createdAt: row.created_at,
     scoreComponents: row.score_components ?? undefined,
     review: row.review_metadata ?? undefined,
     researchContext: research.success ? { ...research.data.analysis.company,
@@ -186,13 +205,15 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
   const activity: AgentEvent[] = snapshot.events.map((row) => {
     const run = row.agent_run_id ? runsById.get(row.agent_run_id) : null;
     const kind = row.event_type;
-    const category = kind.includes("failed") || kind === "error" ? "error" as const
-      : kind.startsWith("tool_") || kind === "model_request_started" ? "tool" as const
-      : kind.startsWith("approval_") || kind.startsWith("proposed_action_") ? "approval" as const
-      : kind.startsWith("workflow_") ? "workflow" as const
+    const isError = kind.includes("failed") || ["error", "retry_exhausted", "run_marked_stale"].includes(kind);
+    const category = isError ? "error" as const
+      : kind.startsWith("tool_") || ["model_request_started", "reply_check_started", "reply_detected"].includes(kind) ? "tool" as const
+      : kind.startsWith("approval_") || kind.startsWith("proposed_action_") || kind === "followup_draft_created" ? "approval" as const
+      : kind.startsWith("workflow_") || kind.startsWith("automation_") || kind.startsWith("run_") || kind.startsWith("icp_") || kind.startsWith("template_")
+        || ["retry_scheduled", "manual_retry_requested", "followup_due"].includes(kind) ? "workflow" as const
       : "agent" as const;
-    const status = kind.includes("failed") || kind === "error" ? "failed" as const
-      : kind === "execution_outcome_unknown" || kind === "integration_reconnect_required" ? "waiting" as const
+    const status = isError ? "failed" as const
+      : ["execution_outcome_unknown", "integration_reconnect_required", "automation_scheduled", "retry_scheduled", "manual_retry_requested", "followup_due", "followup_draft_created"].includes(kind) ? "waiting" as const
       : kind.endsWith("_started") ? "running" as const
       : kind === "approval_requested" ? "waiting" as const
       : "completed" as const;
@@ -234,6 +255,9 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
       status: row.status,
       progress: row.progress,
       currentStep: row.current_step,
+      icpId: row.icp_id ?? undefined, templateId: row.template_id ?? undefined,
+      icpName: row.icp_snapshot?.name, templateName: row.template_snapshot?.name,
+      icpSnapshot: row.icp_snapshot ?? undefined, templateSnapshot: row.template_snapshot ?? undefined,
       targetCompanies: row.target_companies,
       companyCount: companyIds.size,
       qualifiedLeadCount: relatedLeads.filter((lead) => ["qualified", "outreach_ready", "waiting_approval", "contacted", "responded", "converted"].includes(lead.status)).length,

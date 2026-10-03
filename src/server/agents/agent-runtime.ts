@@ -10,6 +10,7 @@ import type { ResearchInput, WorkflowResearchInput, TargetProfile } from "@/lib/
 import { runPreparation, type ReviewerAgent, type OutreachAgent } from "./outreach-agents";
 import type { ReviewerInput, ReviewerOutput, verifiedRecipientSchema } from "@/lib/validation/outreach";
 import type { z } from "zod";
+import { observeToolEvents, recordTokenUsage } from "../observability/runtime-telemetry";
 
 export type RuntimeEvent = (type: AgentEventType, summary: string, metadata: Record<string, string | number>) => Promise<void>;
 
@@ -31,25 +32,22 @@ export class AgentRuntime {
 
   researchProfile(input: WorkflowResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
     if (!this.researcher) throw new PlannerError("ai_configuration", false);
-    return this.researcher.profile(input, model, record, metrics);
+    return this.researcher.profile(input, model, observeToolEvents(record), metrics);
   }
   discoverCompanies(input: WorkflowResearchInput, profile: TargetProfile, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
     if (!this.researcher) throw new PlannerError("ai_configuration", false);
-    return this.researcher.discover(input, profile, model, record, metrics);
+    return this.researcher.discover(input, profile, model, observeToolEvents(record), metrics);
   }
 
   research(input: ResearchInput, model: string, record: RuntimeEvent, metrics: AgentMetrics) {
     if (!this.researcher) throw new PlannerError("ai_configuration", false);
-    return this.researcher.research(input, model, record, metrics);
+    return this.researcher.research(input, model, observeToolEvents(record), metrics);
   }
 
   async plan(input: PlannerInput, model: string, record: RuntimeEvent, metrics: AgentMetrics): Promise<PlannerOutput> {
     if (!this.planner) throw new PlannerError("ai_configuration", false);
     const measure = (usage: TokenUsage | null) => {
-      if (!usage) return;
-      metrics.inputTokens = (metrics.inputTokens ?? 0) + usage.inputTokens;
-      metrics.outputTokens = (metrics.outputTokens ?? 0) + usage.outputTokens;
-      metrics.totalTokens = (metrics.totalTokens ?? 0) + usage.totalTokens;
+      recordTokenUsage(metrics, usage, model);
     };
     for (let attempt = 1; attempt <= PLANNER_MAX_ATTEMPTS; attempt++) {
       metrics.retryCount = attempt - 1;

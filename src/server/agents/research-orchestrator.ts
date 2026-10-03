@@ -12,6 +12,7 @@ import { getResearchModel } from "./config";
 import { researchCompanyLimit, ResearchError } from "./research-budget";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { icpAgentContext } from "@/lib/validation/strategy";
 
 export const researchTaskBehavior = {
   define_target_profile: "profile", discover_companies: "discovery", research_companies: "research",
@@ -65,6 +66,7 @@ export async function executeResearchStep(
   const profile = profileTask ? targetProfileSchema.parse(profileTask.output && typeof profileTask.output === "object" && "profile" in profileTask.output ? profileTask.output.profile : null) : null;
   const context = plannerTaskContextSchema.parse(task.input);
   const input = workflowResearchInputSchema.parse({ workflowId, taskId: task.id, goal: workflow.goal,
+    icpContext: icpAgentContext(workflow.icp_snapshot),
     requestedCompanyCount: researchCompanyLimit(workflow.target_companies),
     plannerContext: { objective: context.objective, expectedOutput: context.expectedOutput },
     existingCompanies: existing.filter((company) => !company.website || publicWebsiteSchema.safeParse(company.website).success)
@@ -95,7 +97,8 @@ export async function executeResearchStep(
         if (!profile) throw new AppError("validation", "The target profile is missing.");
         if (!candidate) { output = { kind: task.type, exhausted: true }; break; }
         await record("company_research_started", `Analyzing ${candidate.company.name}`, { company_id: candidate.company.id });
-        const result = await runtime.research({ name: candidate.company.name, website: candidate.company.website, goal: workflow.goal, icp: profile.icp, location: profile.location }, model, record, metrics);
+        const result = await runtime.research({ name: candidate.company.name, website: candidate.company.website, goal: workflow.goal,
+          icp: profile.icp, location: profile.location, icpContext: input.icpContext }, model, record, metrics);
         output = { kind: task.type, companyId: candidate.company.id, result }; break;
       }
       case "identify_opportunities":

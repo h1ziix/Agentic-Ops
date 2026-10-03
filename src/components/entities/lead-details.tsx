@@ -12,6 +12,7 @@ import { entityDate, outreachLabel, useProspectData } from "@/components/entitie
 import type { Lead } from "@/types/domain";
 import { ScoreBreakdown } from "./score-breakdown";
 import { ResearchSources } from "./research-sources";
+import { LeadAutomation } from "@/components/automation/lead-automation";
 
 export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -55,6 +56,7 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
           {approval?.status === "approved" && <p className="text-[11px] leading-5 text-muted-foreground">{mode === "demo" ? "Preview authorization only; no external transport." : proposal?.envelope ? "Exact revision approved. Execute separately from the approval or workflow." : "Historical content approval; recipient and sender must be reviewed in a replacement before execution."}</p>}
           {mode === "live" && proposal?.attempts?.map((attempt) => <div key={attempt.id} className="min-w-0 border-t border-border pt-3 text-xs leading-6"><p>Execution attempt {attempt.attempt_number}: {attempt.status.replaceAll("_", " ")}</p><p className="text-muted-foreground">Verification: {attempt.verification_method.replaceAll("_", " ")}</p>{attempt.result?.messageId && <p className="break-all font-mono text-[11px]">Gmail accepted message {attempt.result.messageId}; delivery and reading not confirmed.</p>}{attempt.safe_error_code && <p className="text-[var(--warning-fg)]">{attempt.safe_error_code} · preparation results are retained.</p>}</div>)}
         </EntitySection>
+        {mode === "live" && <LeadAutomation lead={lead} />}
         {mode === "live" && <EntitySection title="CRM sync / separate permission" icon={<Building2 className="size-4 text-muted-foreground" />}>{crm.length ? crm.map(({ approval: group, action }) => <div key={action.id} className="min-w-0 text-xs leading-6"><Link href={`/approvals?approval=${group.id}`} className="underline">{action.status} · revision {action.revision}</Link>{action.attempts?.map((t) => <p key={t.id} className="break-all text-muted-foreground">{t.status.replaceAll("_", " ")}{t.result?.contactId ? ` · HubSpot contact ${t.result.contactId}` : ""}</p>)}</div>) : <p className="text-xs leading-6 text-muted-foreground">No CRM proposal. Email approval never authorizes a CRM write.</p>}</EntitySection>}
         {events.length > 0 && <EntitySection title="Recent agent activity" icon={<FileText className="size-4 text-muted-foreground" />}><ol className="flex flex-col gap-3 border-l border-border pl-4">{events.map((event) => <li key={event.id}><p className="text-xs leading-5">{event.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{event.agent ?? "Workflow"} · {entityDate.format(new Date(event.timestamp))}</p></li>)}</ol></EntitySection>}
         <EntitySection title="Connected records" icon={<GitBranch className="size-4 text-muted-foreground" />}>

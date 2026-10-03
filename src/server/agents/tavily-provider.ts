@@ -16,10 +16,14 @@ export function normalizeTavilySources(response: unknown, limit: number = RESEAR
   const seen = new Set<string>();
   return parsed.data.results.flatMap((result) => {
     if (!publicWebsiteSchema.safeParse(result.url).success || !result.content.trim()) return [];
-    const canonical = new URL(result.url); canonical.hash = "";
+    const canonical = new URL(result.url);
+    const rooted = canonical.hostname.endsWith(".");
+    canonical.hostname = canonical.hostname.replace(/\.$/, "");
+    const sourceUrl = rooted ? canonical.href : result.url;
+    canonical.hash = "";
     if (seen.has(canonical.href)) return [];
     seen.add(canonical.href);
-    return [{ id: `source_${seen.size}`, url: result.url, title: (result.title.trim() || canonical.hostname).slice(0, 500),
+    return [{ id: `source_${seen.size}`, url: sourceUrl, title: (result.title.trim() || canonical.hostname).slice(0, 500),
       content: result.content.trim().slice(0, RESEARCH_LIMITS.sourceCharacters), relevance: result.score, retrievedAt: new Date().toISOString() }];
   }).slice(0, limit);
 }

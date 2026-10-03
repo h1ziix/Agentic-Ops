@@ -54,6 +54,6 @@ export function IntegrationSettings() {
         </div>}
       </div>;
     })}
-    <div className="flex items-start gap-3 py-5"><CalendarDays className="mt-1 size-4 text-muted-foreground" /><div><h3 className="text-[13px] font-medium">Google Calendar</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Release 0.7 · internal follow-up plans do not create calendar events.</p></div></div>
+    <div className="flex items-start gap-3 py-5"><CalendarDays className="mt-1 size-4 text-muted-foreground" /><div><h3 className="text-[13px] font-medium">Google Calendar</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Not connected. Follow-up plans schedule internal draft preparation and do not create Calendar events.</p></div></div>
   </div>;
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { Activity, ArrowUpRight, Building2, ChevronDown, ChevronRight, Command, LayoutGrid, LogOut, Menu, Search, Settings2, ShieldCheck, UsersRound, Workflow } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, Building2, CalendarClock, ChevronDown, ChevronRight, Command, FileStack, LayoutGrid, LogOut, Menu, Search, Settings2, ShieldCheck, Target, UsersRound, Workflow } from "lucide-react";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -21,7 +21,11 @@ const navigation = [
   { label: "Leads", href: "/leads", icon: UsersRound, group: "Workspace" },
   { label: "Companies", href: "/companies", icon: Building2, group: "Workspace" },
   { label: "Approvals", href: "/approvals", icon: ShieldCheck, group: "Operations" },
+  { label: "Automation", href: "/automation", icon: CalendarClock, group: "Operations" },
   { label: "Activity", href: "/activity", icon: Activity, group: "Operations" },
+  { label: "Intelligence", href: "/intelligence", icon: BarChart3, group: "Strategy" },
+  { label: "Customer profiles", href: "/icps", icon: Target, group: "Strategy" },
+  { label: "Templates", href: "/templates", icon: FileStack, group: "Strategy" },
 ] as const;
 
 function SidebarContent({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: () => void }) {
@@ -45,7 +49,7 @@ function SidebarContent({ onNavigate, onSearch }: { onNavigate?: () => void; onS
       <button type="button" onClick={onSearch} className="sidebar-action mt-3 flex h-9 w-full items-center gap-2 rounded-md px-2.5 text-xs text-sidebar-foreground/65"><Search className="size-3.5" />Quick search<kbd className="ml-auto rounded border border-sidebar-border bg-white/5 px-1.5 py-0.5 font-sans text-[10px] text-sidebar-foreground/65">Ctrl K</kbd></button>
     </div>
     <nav className="flex flex-1 flex-col gap-6 px-3 pt-8" aria-label="Main navigation">
-      {(["Workspace", "Operations"] as const).map(group => <div key={group}>
+      {(["Workspace", "Operations", "Strategy"] as const).map(group => <div key={group}>
         <p className="mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-sidebar-foreground/45">{group}</p>
         <div className="flex flex-col gap-1">{navigation.filter(item => item.group === group).map(({ label, href, icon: Icon }) => {
           const selected = pathname === href || pathname.startsWith(href + "/");
@@ -83,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="workspace-canvas min-h-screen lg:pl-[232px]">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground"><Button size="icon-sm" variant="ghost" className="-ml-1 lg:hidden" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu /></Button><span className="hidden font-mono text-[10px] uppercase tracking-[0.12em] sm:inline">Workspace</span><ChevronRight className="hidden size-3 text-[var(--icon-muted)] sm:inline" /><Link href={pathname.startsWith("/workflows/") ? "/workflows" : pathname} className="interactive-link truncate font-semibold text-foreground">{current}</Link>{pathname.startsWith("/workflows/") && <><ChevronRight className="size-3" /><span className="truncate">Execution detail</span></>}</div>
-        <div className="flex items-center gap-2 sm:gap-3"><span className="hidden items-center gap-1.5 rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-[var(--brand-accent)]" />{mode === "live" ? "Release 0.6" : "Demo preview"}</span><div className="mx-1 hidden h-4 border-l border-border sm:block" /><Button size="icon-sm" variant="ghost" aria-label="Search workspace" onClick={openSearch}><Search /></Button><ThemeSelector /><Link href="/settings" aria-label={`${workspace.name} settings`} className="header-avatar flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-[9px] font-semibold">{workspace.initials}</Link></div>
+        <div className="flex items-center gap-2 sm:gap-3"><span className="hidden items-center gap-1.5 rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-[var(--brand-accent)]" />{mode === "live" ? "Release 0.8" : "Demo preview"}</span><div className="mx-1 hidden h-4 border-l border-border sm:block" /><Button size="icon-sm" variant="ghost" aria-label="Search workspace" onClick={openSearch}><Search /></Button><ThemeSelector /><Link href="/settings" aria-label={`${workspace.name} settings`} className="header-avatar flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-[9px] font-semibold">{workspace.initials}</Link></div>
       </header>
       {!storageAvailable && <p role="status" className="border-b border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-2 text-xs text-[var(--warning-fg)] sm:px-6 lg:px-8">Browser storage is unavailable. Changes will last only for this visit.</p>}
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1536px] px-4 py-8 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring sm:px-6 lg:px-8 lg:py-9"><PageTransition key={pathname}>{children}</PageTransition></main>

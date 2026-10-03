@@ -12,6 +12,7 @@ import type { AgentRunService } from "../services/agent-run-service";
 import type { EventService } from "../services/event-service";
 import { AppError } from "../errors";
 import { getOutreachModel, getReviewerModel } from "./config";
+import { icpAgentContext } from "@/lib/validation/strategy";
 
 export const supportsPreparationTask = (type: string) => ["review_qualified_leads", "generate_outreach", "request_approval"].includes(type);
 export function nextPreparationTask(tasks: WorkflowTaskRow[]) {
@@ -90,13 +91,15 @@ export async function executePreparationStep(request: PlanWorkflowInput, reader:
     events.record({ workspaceId, workflowId, workflowTaskId: task.id, agentRunId: run.id, eventType, summary,
       metadata: { ...metadata, lead_id: lead.id, company_id: lead.company_id } }).then(() => {});
   try {
-    const researchRun = history.find((entry) => entry.agent_type === "researcher" && entry.status === "completed"
+    const researchRun = history.find((entry) => (!lead.research_run_id || entry.id === lead.research_run_id)
+      && entry.agent_type === "researcher" && entry.status === "completed"
       && typeof entry.output === "object" && entry.output !== null && "companyId" in entry.output
       && entry.output.companyId === lead.company_id && "result" in entry.output);
     if (!researchRun) throw new AppError("validation", "This lead has no workflow-specific research evidence.");
     const research = researchOutputSchema.parse((researchRun.output as { result: unknown }).result);
+    const savedIcp = icpAgentContext(workflow.icp_snapshot);
     const reviewInput = reviewInputFromResearch({ workflowId, leadId: lead.id, companyId: lead.company_id,
-      researchRunId: researchRun.id, goal: workflow.goal }, research);
+      researchRunId: researchRun.id, goal: workflow.goal, ...(savedIcp ? { icpContext: savedIcp } : {}) }, research);
     let output: z.infer<ReturnType<typeof z.json>>;
     if (agentType === "reviewer") {
       output = { leadId: lead.id, reviewInput, review: await runtime.review(reviewInput, model, record, metrics) };

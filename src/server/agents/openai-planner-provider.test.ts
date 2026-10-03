@@ -22,7 +22,7 @@ test("OpenAI adapter calls Responses with a strict schema, no tools or provider 
   const result = await new OpenAIPlannerProvider(client).generate(examplePlannerInput, "test-model", 1);
   assert.equal(calls, 1);
   assert.deepEqual(result.output, examplePlan);
-  assert.deepEqual(result.usage, { inputTokens: 40, outputTokens: 160, totalTokens: 200 });
+  assert.deepEqual(result.usage, { inputTokens: 40, outputTokens: 160, totalTokens: 200, cachedInputTokens: 0, cacheWriteTokens: null, reasoningTokens: 0, reasoningIncludedInOutput: true });
   assert.equal(body.model, "test-model");
   assert.equal(body.store, false);
   assert.equal("tools" in body, false);
@@ -39,6 +39,15 @@ test("OpenAI adapter refuses malformed structured outputs and explicit refusals"
   const client = new OpenAI({ apiKey: "unit-test-placeholder", fetch: async () => Response.json(refusalResponse) });
   await assert.rejects(() => new OpenAIPlannerProvider(client).generate(examplePlannerInput, "test-model", 1),
     (error) => error instanceof PlannerError && error.code === "ai_refused" && !error.retryable);
+});
+
+test("OpenAI adapter normalizes observed cache-write usage from the SDK response", async () => {
+  const response = sdkResponse();
+  const client = new OpenAI({ apiKey: "unit-test-placeholder", fetch: async () => Response.json({ ...response,
+    usage: { ...response.usage, input_tokens_details: { cached_tokens: 0, cache_write_tokens: 40 } } }) });
+  const result = await new OpenAIPlannerProvider(client).generate(examplePlannerInput, "test-model", 1);
+  assert.equal(result.usage?.cacheWriteTokens, 40); assert.equal(result.usage?.inputTokens, 40);
+  assert.equal(result.usage?.totalTokens, 200);
 });
 
 test("OpenAI adapter maps authentication, transient provider errors and timeouts to safe errors without SDK retries", async () => {

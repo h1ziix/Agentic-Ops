@@ -6,7 +6,19 @@ declare
   v_workflow uuid; v_second uuid; v_task uuid; v_research_task uuid; v_score_task uuid; v_company uuid; v_failed_company uuid;
   v_run public.agent_runs%rowtype; v_replay public.agent_runs%rowtype; v_input jsonb; v_output jsonb; v_result jsonb; v_count integer;
   v_metrics jsonb := '{"durationMs":10,"retryCount":0,"taskCount":1,"inputTokens":1,"outputTokens":2,"totalTokens":3}';
+  v_url text;
 begin
+  if public.research_domain('https://www.rekassa.kz./product?lang=ru') <> 'rekassa.kz'
+    or public.research_domain('https://www.rekassa.kz.#details') <> 'rekassa.kz'
+    or not public.public_research_url('https://rekassa.kz.')
+    or not public.public_research_url('https://rekassa.kz./product?lang=ru#details') then
+    raise exception 'Public DNS root evidence must retain canonical identity'; end if;
+  foreach v_url in array array['https://127.0.0.1./private','https://host.internal./private','https://host.local./',
+    'https://host.test./','https://host.invalid./','https://host.localdomain./','https://host.home./','https://host.lan./',
+    'https://localhost./','https://host.internal.#fragment','https://host.internal#fragment','https://127.0.0.1.#fragment',
+    'https://user:password@rekassa.kz./','https://rekassa.kz.:443/','https://rekassa.kz..'] loop
+    if public.public_research_url(v_url) then raise exception 'Unsafe rooted source accepted: %',v_url; end if;
+  end loop;
   if has_function_privilege('authenticated','public.start_research_task_run(uuid,uuid,uuid,uuid,uuid,text,jsonb)','EXECUTE')
     or has_function_privilege('anon','public.complete_research_task_run(uuid,public.agent_run_status,jsonb,jsonb,jsonb)','EXECUTE')
     or has_function_privilege('service_role','public.complete_research_run(uuid,public.agent_run_status,jsonb,jsonb,jsonb)','EXECUTE') then
@@ -61,6 +73,8 @@ begin
     raise exception 'Unsafe source must be rejected';
   exception when invalid_parameter_value then null; end;
   if exists(select 1 from public.companies where id=v_company and research_status='researched') then raise exception 'Invalid result persisted'; end if;
+  -- Cached evidence from before canonicalization may still use an equivalent DNS root dot.
+  v_result := jsonb_set(v_result,'{sources,0,url}','"https://example.com./product?evidence=1#overview"');
   perform public.complete_research_task_run(v_run.id,'completed',jsonb_build_object('kind','research_companies','companyId',v_company,'result',v_result),null,v_metrics);
   select * into v_replay from public.start_research_task_run(gen_random_uuid(),v_user,v_workspace,v_workflow,v_research_task,'test',v_input);
   if v_replay.id<>v_run.id then raise exception 'Completed company replay must not rerun'; end if;
@@ -98,6 +112,7 @@ begin
     values(v_workspace,v_second,'research_companies','Research','Research',2,'{"planTaskId":"research","dependencies":["discover"]}') returning id into v_research_task;
   v_input := jsonb_build_object('workKey',v_failed_company,'companyId',v_failed_company,'requestedCompanyCount',5,'retry',false);
   select * into v_run from public.start_research_task_run(gen_random_uuid(),v_user,v_workspace,v_second,v_research_task,'test',v_input);
+  v_result := jsonb_set(v_result,'{company,website}','"https://www.example.com./"');
   select * into v_run from public.complete_research_task_run(v_run.id,'completed',jsonb_build_object('kind','research_companies','companyId',v_failed_company,'result',v_result),null,v_metrics);
   if v_run.input->>'companyId' is distinct from v_company::text or v_run.output->>'companyId' is distinct from v_company::text
     or exists(select 1 from public.companies where id=v_failed_company) or (select count(*) from public.companies where workspace_id=v_workspace)<>2

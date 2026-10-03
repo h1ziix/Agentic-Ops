@@ -29,6 +29,10 @@ const statusLabels: Record<string, string> = {
   researched: "Researched",
   researching: "Researching",
   queued: "Queued",
+  scheduled: "Scheduled",
+  retry_scheduled: "Retry scheduled",
+  due: "Due",
+  planned: "Planned",
   drafted: "Drafted",
   not_started: "Not started",
   reviewing: "Reviewing",
@@ -44,7 +48,7 @@ const statusLabels: Record<string, string> = {
 
 function statusTone(status: string) {
   if (["running", "planning", "in_research", "reviewing", "drafting"].includes(status)) return "text-[var(--success-fg)] bg-[var(--success-fg)]/9 border-[var(--success-fg)]/20 before:bg-[var(--success-fg)]";
-  if (["waiting_for_approval", "waiting_approval", "waiting", "pending", "outreach_ready", "needs_revision", "pending_approval", "blocked_missing_recipient", "needs_more_research", "draft_ready", "ready_for_review"].includes(status)) return "text-[var(--warning-fg)] bg-[var(--warning-fg)]/9 border-[var(--warning-fg)]/20 before:bg-[var(--warning-fg)]";
+  if (["waiting_for_approval", "waiting_approval", "waiting", "pending", "outreach_ready", "needs_revision", "pending_approval", "blocked_missing_recipient", "needs_more_research", "draft_ready", "ready_for_review", "retry_scheduled", "due"].includes(status)) return "text-[var(--warning-fg)] bg-[var(--warning-fg)]/9 border-[var(--warning-fg)]/20 before:bg-[var(--warning-fg)]";
   if (["completed", "complete", "qualified", "approved", "executed", "responded", "researched", "ready_for_execution", "converted", "sent"].includes(status)) return "text-[var(--success-fg)] bg-[var(--success-fg)]/9 border-[var(--success-fg)]/20 before:bg-[var(--success-fg)]";
   if (["failed", "rejected", "cancelled"].includes(status)) return "text-[var(--danger-fg)] bg-[var(--danger-fg)]/9 border-[var(--danger-fg)]/20 before:bg-[var(--danger-fg)]";
   return "text-[var(--text-muted-strong)] bg-muted/50 border-border before:bg-[var(--icon-muted)]";

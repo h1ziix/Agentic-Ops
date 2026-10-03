@@ -2,6 +2,8 @@ import { z } from "zod";
 import { publicWebsiteSchema, normalizeDomain } from "../company-identity";
 import { scoreComponentsSchema, researchOutputSchema, validateResearchAnalysis, type ResearchOutput } from "./research";
 import { approvalMessageSchema } from "./approval";
+import { icpAgentContextSchema } from "./strategy";
+import { strategyReviewBlockers } from "../strategy-eligibility";
 
 const text = z.string().trim().min(1);
 export const confidenceSchema = z.enum(["low", "medium", "high"]);
@@ -25,11 +27,12 @@ export const reviewerInputSchema = z.object({
   score: z.number().int().min(0).max(100), scoreBreakdown: scoreComponentsSchema,
   opportunity: text.max(2000), confidence: confidenceSchema,
   uncertainties: z.array(text.max(500)).max(10), evidence: z.array(evidenceReferenceSchema).max(10),
+  icpContext: icpAgentContextSchema.optional(),
 }).strict();
 export type ReviewerInput = z.infer<typeof reviewerInputSchema>;
 
 /** Review the workflow's immutable research result, never the workspace's latest company summary. */
-export function reviewInputFromResearch(ids: Pick<ReviewerInput, "workflowId" | "leadId" | "companyId" | "researchRunId" | "goal">, saved: ResearchOutput): ReviewerInput {
+export function reviewInputFromResearch(ids: Pick<ReviewerInput, "workflowId" | "leadId" | "companyId" | "researchRunId" | "goal" | "icpContext">, saved: ResearchOutput): ReviewerInput {
   const result = researchOutputSchema.parse(saved);
   const analysis = validateResearchAnalysis(result.analysis, result.sources);
   return reviewerInputSchema.parse({ ...ids, company: { ...result.company, description: analysis.company.description,
@@ -49,6 +52,11 @@ export function validateReviewerOutput(output: unknown, input: ReviewerInput): R
     || parsed.allowedPersonalizationClaims.some((claim) => !parsed.usableEvidence.some((fact) => fact.claim === claim))
     || parsed.outreachAngle.supportingEvidence.some((claim) => !parsed.allowedPersonalizationClaims.includes(claim))
     || parsed.allowedPersonalizationClaims.some((claim) => parsed.rejectedClaims.includes(claim))) throw new Error("Unsupported reviewer claim");
+  const blockers = strategyReviewBlockers(input.icpContext, input.score, input.evidence.flatMap((fact) => [fact.claim, fact.quote]));
+  if (blockers.length && parsed.decision === "approve_for_outreach") {
+    return { ...parsed, decision: "reject_for_outreach", summary: "The saved ICP excludes this lead from outreach.",
+      concerns: [...blockers, ...parsed.concerns].slice(0, 10) };
+  }
   if (parsed.decision === "approve_for_outreach") {
     const companyDomain = normalizeDomain(input.company.website);
     const firstParty = parsed.usableEvidence.some((fact) => {

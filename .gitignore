@@ -12,6 +12,7 @@ output/playwright/
 output/research/
 output/outreach/
 output/execution/
+output/release-08-analytics/
 output/*.log
 supabase/.temp/
 supabase/.branches/

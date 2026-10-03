@@ -14,6 +14,7 @@ import { PLANNER_PROMPT_VERSION } from "./planner-prompt";
 import { executeResearchStep, type ResearchExecutionStore } from "./research-orchestrator";
 import { executePreparationStep, type PreparationStore } from "./outreach-orchestrator";
 import type { Executor, ExecuteContext } from "../execution/executor";
+import { icpAgentContext } from "@/lib/validation/strategy";
 
 export interface PlanningReader {
   getWorkflowById(workspaceId: string, workflowId: string): Promise<WorkflowRow | null>;
@@ -82,12 +83,17 @@ export class Orchestrator {
       assertWorkflowTransition(workflow.status, "planning");
     }
 
+    const savedIcp = icpAgentContext(workflow.icp_snapshot);
     const input: PlannerInput = {
       goal: workflow.goal,
       targetMarket: null,
       location: null,
       requestedLeadCount: workflow.target_companies,
-      context: { title: workflow.title, approvalRequired: true },
+      context: { title: workflow.title, approvalRequired: true,
+        ...(savedIcp ? { icp: savedIcp } : {}),
+        ...(workflow.template_snapshot ? { template: { name: workflow.template_snapshot.name, category: workflow.template_snapshot.category,
+          taskStrategy: workflow.template_snapshot.task_strategy, followupEnabled: workflow.template_snapshot.followup_enabled } } : {}),
+      },
     };
     const model = getPlannerModel();
     const runId = randomUUID();

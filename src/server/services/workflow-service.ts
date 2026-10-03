@@ -30,9 +30,25 @@ export async function createWorkflow(input: NewWorkflowInput): Promise<WorkflowR
     title: titleFromGoal(parsed.data.goal),
     goal: parsed.data.goal,
     targetCompanies: parsed.data.targetCompanies,
+    icpId: parsed.data.icpId,
+    templateId: parsed.data.templateId,
   });
   const workflow = await repository.getWorkflowById(workspace.id, id);
   if (!workflow) throw new AppError("database");
+  const { automationConfiguration } = await import("../automation/config");
+  if (automationConfiguration().enabled) {
+    // Persist the first job during creation; page visibility is never its trigger.
+    const { scheduleWorkflowAutomation } = await import("./automation-service");
+    try { await scheduleWorkflowAutomation(workflow.id); }
+    catch {
+      // Creation succeeded. A transient dispatch failure must not invite a duplicate goal.
+      const { createRuntimeClient } = await import("@/lib/supabase/admin");
+      const { EventService } = await import("./event-service");
+      await new EventService(new AgentEventRepository(createRuntimeClient())).record({ workspaceId: workspace.id, workflowId: workflow.id,
+        eventType: "automation_failed", summary: "The goal was saved, but background scheduling needs attention. Resume this workflow to retry scheduling.",
+        metadata: { operation: "initial_schedule" } }).catch(() => undefined);
+    }
+  }
   return workflow;
 }
 
@@ -53,7 +69,7 @@ export async function getWorkflowDetailSnapshot(workflowId: string, context?: Wo
   const workflow = await workflowRepository.getWorkflowById(workspace.id, id.data);
   if (!workflow) throw new AppError("not_found");
 
-  const [tasks, companies, leads, agentRuns, events, approvals, proposedActions] = await Promise.all([
+  const [tasks, companies, leads, agentRuns, events, approvals, proposedActions, repliedLeadIds] = await Promise.all([
     workflowRepository.listWorkflowTasks(workspace.id, workflow.id),
     new CompanyRepository(supabase).listWorkspaceCompanies(workspace.id, workflow.id),
     new LeadRepository(supabase).listWorkspaceLeads(workspace.id, workflow.id),
@@ -61,10 +77,11 @@ export async function getWorkflowDetailSnapshot(workflowId: string, context?: Wo
     new AgentEventRepository(supabase).listWorkspaceEvents(workspace.id, workflow.id),
     new ApprovalRepository(supabase).listWorkspaceApprovals(workspace.id, workflow.id),
     new ApprovalRepository(supabase).listWorkspaceProposedActions(workspace.id, workflow.id),
+    new LeadRepository(supabase).listDetectedReplyLeadIds(workspace.id, workflow.id),
   ]);
 
   const [execution, integrationConnections] = await Promise.all([new ExecutionRepository(supabase).list(workspace.id, workflow.id), new IntegrationRepository(supabase).list(workspace.id)]);
-  return { workflow, tasks, companies, leads, agentRuns, events, approvals, proposedActions, ...execution, integrationConnections };
+  return { workflow, tasks, companies, leads, agentRuns, events, approvals, proposedActions, repliedLeadIds, ...execution, integrationConnections };
 }
 
 export async function transitionWorkflow(workflowId: string, nextStatus: unknown, summary?: string): Promise<WorkflowRow> {
@@ -76,6 +93,7 @@ export async function transitionWorkflow(workflowId: string, nextStatus: unknown
   const repository = new WorkflowRepository(supabase);
   const current = await repository.getWorkflowById(workspace.id, id.data);
   if (!current) throw new AppError("not_found");
+  if (current.status === "cancelled" && next.data === "cancelled") return current;
   assertWorkflowTransition(current.status, next.data);
   return repository.updateWorkflowStatus(id.data, next.data, parsedSummary.data);
 }

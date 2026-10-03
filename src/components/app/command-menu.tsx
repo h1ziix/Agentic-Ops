@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Building2, CornerDownLeft, FileSearch, LayoutGrid, Search, Settings2, ShieldCheck, UsersRound, Workflow, Activity } from "lucide-react";
+import { ArrowUpRight, BarChart3, Building2, CalendarClock, CornerDownLeft, FileSearch, FileStack, LayoutGrid, Search, Settings2, ShieldCheck, Target, UsersRound, Workflow, Activity } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useDemoStore } from "./demo-store";
 const pages = [
   { label: "Overview", href: "/dashboard", icon: LayoutGrid }, { label: "Workflows", href: "/workflows", icon: Workflow },
   { label: "Leads", href: "/leads", icon: UsersRound }, { label: "Companies", href: "/companies", icon: Building2 },
-  { label: "Approvals", href: "/approvals", icon: ShieldCheck }, { label: "Activity", href: "/activity", icon: Activity }, { label: "Settings", href: "/settings", icon: Settings2 },
+  { label: "Intelligence", href: "/intelligence", icon: BarChart3 }, { label: "Customer profiles", href: "/icps", icon: Target }, { label: "Templates", href: "/templates", icon: FileStack },
+  { label: "Approvals", href: "/approvals", icon: ShieldCheck }, { label: "Automation", href: "/automation", icon: CalendarClock }, { label: "Activity", href: "/activity", icon: Activity }, { label: "Settings", href: "/settings", icon: Settings2 },
 ];
 export function CommandMenu({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState("");

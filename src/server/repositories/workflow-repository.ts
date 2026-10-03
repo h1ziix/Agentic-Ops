@@ -23,12 +23,14 @@ export class WorkflowRepository {
   }
 
   /** SQL creates the planning workflow and creation event atomically, without placeholder tasks. */
-  async createWorkflow(input: { workspaceId: string; title: string; goal: string; targetCompanies: number }): Promise<string> {
-    const { data, error } = await this.supabase.rpc("create_workflow", {
+  async createWorkflow(input: { workspaceId: string; title: string; goal: string; targetCompanies: number; icpId?: string; templateId?: string }): Promise<string> {
+    const usesStrategy = Boolean(input.icpId || input.templateId);
+    const { data, error } = await this.supabase.rpc(usesStrategy ? "create_workflow_from_strategy" : "create_workflow", {
       p_workspace_id: input.workspaceId,
       p_title: input.title,
       p_goal: input.goal,
       p_target_companies: input.targetCompanies,
+      ...(usesStrategy ? { p_icp_id: input.icpId ?? null, p_template_id: input.templateId ?? null } : {}),
     });
     if (error) throw fromDatabaseError("create_workflow", error);
     const result = z.uuid().safeParse(data);

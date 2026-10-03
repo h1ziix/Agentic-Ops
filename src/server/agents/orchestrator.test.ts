@@ -11,6 +11,8 @@ import { Orchestrator } from "./orchestrator";
 import { PlannerAgent, type PlannerProvider } from "./planner-agent";
 import { PlannerError } from "./errors";
 import { examplePlan, examplePlannerInput } from "./testing/planner-fixtures";
+import { icpSnapshotSchema, icpAgentContext } from "@/lib/validation/strategy";
+import type { PlannerInput } from "@/lib/validation/planner";
 
 function fixture(provider: PlannerProvider = { generate: async () => ({ output: examplePlan, usage: null }) }) {
   const request = { workflowId: randomUUID(), workspaceId: randomUUID(), userId: randomUUID() };
@@ -67,6 +69,26 @@ test("orchestrator persists a real plan and advances planning to running with pe
   assert.equal(state.tasks.length, 7);
   assert.ok(state.tasks.every((task) => task.status === "pending"));
   assert.equal(state.events[0].event_type, "model_request_started");
+});
+
+test("Planner receives workflow snapshots and explicit goal without reading mutable source strategy", async () => {
+  let received: PlannerInput | undefined;
+  const state = fixture({ generate: async (input) => { received = input; return { output: examplePlan, usage: null }; } });
+  const snapshot = icpSnapshotSchema.parse({ id: randomUUID(), name: "Kazakhstan Fintech", description: "Saved profile", industries: ["Payments"],
+    locations: ["Kazakhstan"], company_size_min: null, company_size_max: null, business_models: ["B2B"], required_signals: [], preferred_signals: ["digital products"],
+    excluded_signals: ["gambling"], automation_focus: ["customer support"], minimum_lead_score: 75, default_company_count: 5, updated_at: state.workflow.updated_at });
+  state.workflow.icp_id = snapshot.id; state.workflow.icp_snapshot = snapshot;
+  state.workflow.template_id = randomUUID(); state.workflow.template_snapshot = { id: state.workflow.template_id, name: "Fintech Research", description: "Template",
+    category: "Fintech", default_goal: "Template default must not replace the user goal.", task_strategy: "Prioritize first-party evidence.", default_icp_id: snapshot.id,
+    default_company_count: 5, approval_required: true, followup_enabled: true, updated_at: state.workflow.updated_at };
+  await state.orchestrator.planWorkflow(state.request);
+  assert.equal(received?.goal, examplePlannerInput.goal);
+  assert.deepEqual(received?.context.icp, icpAgentContext(snapshot));
+  assert.equal(received?.context.template?.taskStrategy, "Prioritize first-party evidence.");
+  assert.equal(received?.context.approvalRequired, true);
+  assert.equal(received?.context.template?.followupEnabled, true);
+  assert.equal("default_goal" in (received?.context.template ?? {}), false);
+  assert.equal(state.tasks.length, examplePlan.tasks.length);
 });
 
 test("sequential and concurrent retries reuse one Planner run and one set of tasks", async () => {

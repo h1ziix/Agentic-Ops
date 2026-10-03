@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops is an operational workspace for sales research workflows. Release 0.6 extends the existing planning, research, evidence review and approval architecture with a deterministic Executor: exact approved Gmail messages, exact HubSpot contact patches and internal follow-up plans. Approval and Execute are separate operations. Historical Release 0.5 content approvals stay readable and cannot authorize external execution.
+Agentic Ops is an operational workspace for sales research workflows. Release 0.8 adds persisted Product Intelligence, saved ICPs and reusable Workflow Templates around the existing execution and automation layers. Approval and Execute remain separate. Follow-up timers prepare fresh proposals; they never authorize a new email. Historical content approvals stay readable and cannot authorize external execution.
 
 ## Requirements
 
@@ -231,4 +231,80 @@ SQL fixtures roll back and use mocked results, with no provider calls. Unit test
 
 Controlled live verification requires owner OAuth consent, a user-controlled test inbox and test HubSpot portal/contact. Show exact test account/recipient/subject/body or patch, product approval and separate permission, then Execute. Verify Sent/result, persistence, replay, recipient replacement, CRM create/update without duplicate and saved follow-up without automatic send. Test unknown outcomes with deterministic mocked transport. Missing environment/consent/accounts block live verification; mocked checks are never live evidence.
 
-0.7 owns background continuation, scheduled retries, follow-up dispatch (a future email requires new approval), Calendar, response monitoring/webhooks and recovery/reconciliation jobs. None is implemented in 0.6; no billing, analytics, deployment or new orchestration infrastructure. Existing failed preparation leads remain skipped on resume, with no explicit preparation retry.
+The preceding sections describe preserved 0.3–0.6 behavior. The current automation boundary follows.
+
+## Release 0.7 automation
+
+Domain services persist `automation_jobs` before scheduling through `JobScheduler`. The Trigger.dev adapter sends a job UUID only. Trigger tasks call the fixed application callback with an HMAC over the exact body and timestamp. Callbacks expire after sixty seconds and have a 4 KiB limit. The application reloads the saved actor/workspace, verifies membership and claims the job atomically. Claim tokens are server-only. Duplicate delivery and cancellation cannot grant new dispatch rights.
+
+Explicit handlers cover workflow continuation, research retry, retry of a previously attempted exact approved action, follow-up preparation, targeted reply check, health check and stale recovery. The existing Orchestrator runs one bounded step; completion atomically persists its next continuation job. Trigger.dev owns durable timers, with a five-minute maintenance task for outbox dispatch and expired-worker recovery. Recovery checks provider status first; an unavailable provider is not proof that a worker stopped. There is no process-memory scheduler or second workflow engine.
+
+Automation is opt-in. Without configured/enabled automation, the existing synchronous path remains runnable and Automation shows a setup state.
+
+### Worker setup
+
+Create a Trigger.dev project and log in through its official CLI. Configure `TRIGGER_PROJECT_REF`, its development `TRIGGER_SECRET_KEY`, and a random `AUTOMATION_JOB_SIGNING_SECRET` of at least 32 characters directly in `.env.local`. In the matching Trigger.dev development environment set the same signing secret plus `AUTOMATION_APP_URL`. The worker needs no Supabase, AI, Gmail or HubSpot secrets. Never sync the entire `.env.local` to the provider. Local workers can use `http://localhost:3000`; hosted workers require a reachable HTTPS app origin.
+
+```powershell
+npm run dev
+# Second terminal, after Trigger.dev project/login setup:
+npm run automation:dev
+```
+
+Register the worker, then set `AUTOMATION_ENABLED=true` and restart Next.js. The CLI env-file flag hydrates CLI configuration; task environment variables also belong in Trigger.dev. Production task deployment is a separate operational step through `npm run automation:deploy`, with matching production environment keys/origin/signature configuration. No deployment is performed by this implementation. See [Trigger.dev local development](https://trigger.dev/docs/cli-dev-commands) and [task triggering](https://trigger.dev/docs/triggering).
+
+The signed callback has `maxDuration=300`, matching the worker HTTP timeout. Hosting must support the longest bounded research call; a shorter hosting execution limit is an unresolved deployment constraint.
+
+### Follow-ups and replies
+
+Existing separately approved/executed `follow_up_plans` are extended rather than duplicated. Successful internal-plan execution schedules preparation when enabled; saved plans also form a recoverable maintenance outbox. **Activate saved plans** schedules historical plans at their saved due time. The original message, confirmed recipient/account generation, accepted evidence, company/lead context and elapsed time feed the existing Outreach Agent. Validated output becomes a fresh independent pending v2 proposal and approval. Sending requires fresh exact approval and explicit Execute.
+
+Follow-up preparation retains the internal plan snapshot's original approver as its worker actor, including maintenance, activation and development tests. The approver must still be a workspace member and must retain ownership when the original Gmail connection already grants read access. Unrelated members cannot take over the timer. Send-only connections keep monitoring unavailable; prepared messages still require fresh approval and explicit Execute.
+
+Replied/rejected leads, cancelled workflows/plans, invalid contacts, changed connections, absent successful parent execution and an existing draft prevent duplicate generation. Reply detection cancels future jobs and unsent proposals while preserving history. Final Executor guards prevent stale approval from bypassing cancellation. Cancelling a future job cannot undo a sent message.
+
+Gmail 0.6 has **send-only** consent. This release does not broaden OAuth scopes. Targeted metadata monitoring runs only if the current connection already grants `gmail.metadata` or `gmail.readonly`; otherwise reply status is explicitly unavailable/unknown. Only the stored thread's headers, identifiers and dates are fetched. No bodies or mailbox scans are persisted. Reply matching is a sender/thread/time heuristic, not delivery/read or email-authentication proof. A new owner consent flow remains a future integration step.
+
+Maintenance schedules targeted `reply_check` jobs in deterministic ten-minute buckets, including while a prepared draft awaits approval or Execute. Discovery inspects at most forty active plans and retains at most twenty verified owner contexts; each context schedules at most twenty checks. An ongoing check suppresses another, and each job has at most three attempts. The original successful email snapshot's owner must still hold workspace ownership; the current Gmail connection must retain the exact approved ID, generation, identity, and existing read scope. Cancellation or a detected reply stops future checks. Scheduling reads saved references only and performs no OAuth consent, mailbox request, or external write. The due-time check remains an additional guard.
+
+For a rapid development test, set `AUTOMATION_ALLOW_TEST_JOBS=true`, restart Next.js and select **Test due now** on a saved plan. Only its internal preparation job moves to fifteen seconds from now; the approved plan date stays intact. It never sends, and an existing draft is reused. Disable the flag afterward. The control and API are blocked outside development.
+
+### Retry and recovery
+
+Jobs default to three attempts (database hard ceiling five); agents and Executor retain their stricter budgets. Temporary failures use persisted exponential backoff from one minute up to sixty minutes, respecting provider delays. Validation, revoked permission, invalid state, exhausted quota and permanent rejection require attention. Manual retry preserves the same job and cannot reset exhausted budgets.
+
+**Retry in background** requires a previously attempted definitively rejected, retry-eligible operation, exact approval snapshot and remaining Executor attempts. No timer authorizes a pending proposal. Ambiguous email sends, timeouts and expired dispatches stay uncertain. Existing Gmail manual reconciliation and HubSpot read-only reconciliation remain authoritative. An absent result never grants blind resend. Safe stale workers recover only after lease expiry and an inactive provider result.
+
+### Usage and cost
+
+Nullable model/provider usage, cached/reasoning/cache-write tokens, failures, durations and tool correlation extend existing runs/events. Observed failed-model usage is retained. Executor has no AI usage/cost. Compact workflow panels and run drawers show bounded summaries without hidden reasoning or raw payloads. Operational queries are member-scoped and bounded; truncated totals are labelled. Today uses `WORKSPACE_TIMEZONE` (default `Asia/Qyzylorda`).
+
+Automation keeps separate windows of up to one hundred ongoing jobs, one hundred failed jobs, and one hundred completed/cancelled jobs, so recent history cannot displace future work. Follow-up plans and reply observations each use a one-hundred-record window. Dashboard job/reply counts describe the loaded window; incomplete usage and truncated run totals are labelled.
+
+Configure `AI_MODEL_PRICING_JSON` by exact model name with verified per-million `inputUsdPerMillion`, `outputUsdPerMillion`, optional `cachedInputUsdPerMillion`, `cacheWriteUsdPerMillion`, `reasoningUsdPerMillion`, and a dated `version`. Cache-write rates replace the ordinary rate for those input tokens. Provider categories determine whether reasoning is included in output. Missing pricing/usage or unaccounted categories yield **unknown**, never zero. Every cost is **estimated**. Aggregates support workflow, model, agent and day; this is not billing.
+
+### Verification and limitations
+
+Apply versioned migrations with `npx supabase@latest db push --linked`; never reset hosted data. New tables are `automation_jobs` and minimal `reply_observations`. Existing plans/runs gain automation/usage fields. Deterministic workspace keys, explicit FKs, RLS, service-only checked mutations and short leases protect jobs. Credentials/signatures never enter browser code.
+
+```powershell
+npm test
+npm run lint
+npm run typecheck
+npm run build
+npm run verify:client-secrets
+npx supabase@latest db query --linked --file supabase/tests/automation_runtime.sql
+npx supabase@latest db query --linked --file supabase/tests/observability.sql
+```
+
+Also run the four existing SQL suites above. SQL fixtures roll back and unit tests mock all paid/provider calls. Performed checks and live gaps are in [Release 0.7 verification](docs/release-0.7-verification.md). Worker setup, real scheduled execution and real reply cancellation remain separate live acceptance gates.
+
+No aggressive retention/deletion is introduced; store summaries rather than full pages/mail payloads. Remaining Release 0.7 debt includes failed preparation-lead retry controls, historical model-call estimates, provider/hosting configuration and existing reconciliation limits. The Release 0.7 implementation excludes Calendar, unrestricted sending, analytics and billing; its verification notes retain the unresolved live gates.
+
+## Release 0.8 intelligence and reusable strategy
+
+`/intelligence` reads an authenticated, workspace-isolated PostgreSQL aggregate through the Analytics Service and Repository. Business outcomes use workflow-creation cohorts; agent/model activity uses run dates. Funnels count distinct company–workflow pairs, while sent-message/reply-observation totals stay separate. Unknown usage, pricing, monitoring and historical evidence remain unavailable. See [metric definitions](docs/intelligence-metrics.md) for date scopes, denominators, cumulative stages and normalization.
+
+`/icps` and `/templates` provide workspace-owned strategy CRUD and archival. New Workflow combines a goal with optional profile and template context, then invokes the existing Planner. Checked creation freezes the selected strategy; saved lead research/qualification snapshots preserve the assessment used at execution time. Editing or archiving a source does not alter historical workflows. Every external action still needs its own exact approval and separate Execute.
+
+Apply versioned migrations with the existing linked `db push` workflow, without hosted reset/seed. Run the existing rollback SQL suites plus `supabase/tests/sales_strategy.sql` and `supabase/tests/intelligence_analytics.sql`. Actual checks, live verification, database cross-checks and limits are recorded in [Release 0.8 verification](docs/release-0.8-verification.md). Release 0.9 and deployment work remain outside this release.

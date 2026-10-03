@@ -3,6 +3,8 @@ import { taskStatusSchema, workflowStatusSchema } from "./workflow";
 import { agentStatusSchema, agentTypeSchema } from "./agent";
 import { storedSourceSchema, automationOpportunitySchema, scoreComponentsSchema } from "./research";
 import { reviewerOutputSchema } from "./outreach";
+import { icpSnapshotSchema, templateSnapshotSchema, qualificationSnapshotSchema } from "./strategy";
+import { researchOutputSchema } from "./research";
 
 const id = z.uuid();
 const timestamp = z.string();
@@ -29,6 +31,10 @@ export const workflowRowSchema = z.object({
   progress: z.number(),
   current_step: z.string(),
   target_companies: z.number(),
+  icp_id: id.nullable().optional(),
+  template_id: id.nullable().optional(),
+  icp_snapshot: icpSnapshotSchema.nullable().optional(),
+  template_snapshot: templateSnapshotSchema.nullable().optional(),
   created_at: timestamp,
   updated_at: timestamp,
   started_at: nullableTimestamp,
@@ -90,6 +96,8 @@ export const leadRowSchema = z.object({
   outreach_status: z.enum(["not_started", "reviewing", "drafting", "draft_ready", "drafted", "waiting_approval", "approved", "rejected", "needs_more_research", "blocked_missing_recipient", "failed", "sent"]),
   review_metadata: reviewerOutputSchema.nullable().optional(),
   research_run_id: id.nullable().optional(),
+  research_snapshot: researchOutputSchema.nullable().optional(),
+  qualification_snapshot: qualificationSnapshotSchema.nullable().optional(),
   score_components: scoreComponentsSchema.nullable().optional(),
   created_at: timestamp,
   updated_at: timestamp,
@@ -115,6 +123,15 @@ export const agentRunRowSchema = z.object({
   input_tokens: z.number().nullable().optional(),
   output_tokens: z.number().nullable().optional(),
   total_tokens: z.number().nullable().optional(),
+  cached_input_tokens: z.number().int().nonnegative().nullable().optional(),
+  cache_write_tokens: z.number().int().nonnegative().nullable().optional(),
+  reasoning_tokens: z.number().int().nonnegative().nullable().optional(),
+  usage_status: z.enum(["complete", "partial", "unknown", "not_applicable"]).optional(),
+  usage_observation_count: z.number().int().nonnegative().optional(),
+  estimated_cost_usd: z.number().finite().nonnegative().nullable().optional(),
+  cost_status: z.enum(["estimated", "unknown", "not_applicable"]).optional(),
+  pricing_version: z.string().nullable().optional(),
+  error_category: z.enum(["validation", "authorization", "provider_auth", "rate_limit", "network", "timeout", "provider_error", "invalid_state", "duplicate", "unknown_execution_state", "internal"]).nullable().optional(),
 });
 
 export const agentEventTypeSchema = z.enum([
@@ -131,6 +148,10 @@ export const agentEventTypeSchema = z.enum([
   "execution_started", "execution_completed", "execution_failed", "error", "retry",
   "integration_connected", "integration_disconnected", "integration_reconnect_required", "recipient_confirmed", "proposal_superseded",
   "execution_claimed", "execution_succeeded", "execution_outcome_unknown", "execution_reconciled", "execution_retry_requested", "follow_up_planned", "follow_up_cancelled",
+  "automation_scheduled", "automation_started", "automation_completed", "automation_failed", "automation_cancelled",
+  "retry_scheduled", "retry_exhausted", "manual_retry_requested", "followup_due", "followup_draft_created", "reply_check_started", "reply_detected", "run_recovered", "run_marked_stale",
+  "icp_created", "icp_updated", "icp_duplicated", "icp_archived", "template_created", "template_updated", "template_duplicated", "template_archived",
+  "workflow_created_from_icp", "workflow_created_from_template",
 ]);
 
 export const agentEventRowSchema = z.object({

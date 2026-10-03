@@ -46,6 +46,12 @@ export interface Workflow {
   startedAt?: string;
   completedAt?: string;
   errorSummary?: string;
+  icpId?: string;
+  templateId?: string;
+  icpName?: string;
+  templateName?: string;
+  icpSnapshot?: import("@/types/strategy").IcpSnapshot;
+  templateSnapshot?: import("@/types/strategy").TemplateSnapshot;
 }
 
 export interface PlannerRun {
@@ -159,6 +165,8 @@ export interface Lead {
   confidence: "high" | "medium" | "low" | null;
   outreachStatus: OutreachStatus;
   updatedAt: string;
+  createdAt?: string;
+  replyStatus?: "detected" | "none_detected" | "unavailable";
   scoreComponents?: import("zod").z.infer<typeof import("@/lib/validation/research").scoreComponentsSchema>;
   review?: import("@/lib/validation/outreach").ReviewerOutput;
   researchContext?: Pick<Company, "description" | "industry" | "location" | "employeeEstimate" | "researchSummary" | "sourceUrls" | "sources">;

@@ -32,6 +32,16 @@ export class CompanyRepository {
 export class LeadRepository {
   constructor(private readonly supabase: ServerSupabase) {}
 
+  /** Historical positive observations are durable facts; absence never proves no reply. */
+  async listDetectedReplyLeadIds(workspaceId: string, workflowId?: string): Promise<string[]> {
+    let query = this.supabase.from("reply_observations").select("lead_id").eq("workspace_id", workspaceId);
+    if (workflowId) query = query.eq("workflow_id", workflowId);
+    const { data, error } = await query.order("detected_at", { ascending: false });
+    if (error) throw fromDatabaseError("list_detected_reply_leads", error);
+    const rows = parseDatabaseResult(z.array(z.object({ lead_id: z.uuid() })), data, "list_detected_reply_leads");
+    return [...new Set(rows.map((row) => row.lead_id))];
+  }
+
   async listWorkspaceLeads(workspaceId: string, workflowId?: string): Promise<LeadRow[]> {
     let query = this.supabase.from("leads").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);

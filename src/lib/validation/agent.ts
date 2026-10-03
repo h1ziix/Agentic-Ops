@@ -9,6 +9,15 @@ export const agentMetricsSchema = z.object({
   inputTokens: z.number().int().nonnegative().nullable(),
   outputTokens: z.number().int().nonnegative().nullable(),
   totalTokens: z.number().int().nonnegative().nullable(),
+  cachedInputTokens: z.number().int().nonnegative().nullable().optional(),
+  cacheWriteTokens: z.number().int().nonnegative().nullable().optional(),
+  reasoningTokens: z.number().int().nonnegative().nullable().optional(),
+  usageStatus: z.enum(["complete", "partial", "unknown", "not_applicable"]).optional(),
+  usageObservationCount: z.number().int().nonnegative().optional(),
+  usageMissingCount: z.number().int().nonnegative().optional(),
+  estimatedCostUsd: z.number().finite().nonnegative().nullable().optional(),
+  costStatus: z.enum(["estimated", "unknown", "not_applicable"]).optional(),
+  pricingVersion: z.string().max(100).nullable().optional(),
 }).strict();
 
 export type AgentStatus = z.infer<typeof agentStatusSchema>;

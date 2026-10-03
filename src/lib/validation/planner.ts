@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { icpAgentContextSchema } from "./strategy";
 
 export const plannerTaskTypeSchema = z.enum([
   "define_target_profile", "discover_companies", "research_companies",
@@ -56,7 +57,11 @@ export const plannerInputSchema = z.object({
   targetMarket: z.string().max(240).nullable(),
   location: z.string().max(240).nullable(),
   requestedLeadCount: z.number().int().min(1).max(1000),
-  context: z.object({ title: z.string().max(240), approvalRequired: z.literal(true) }).strict(),
+  context: z.object({ title: z.string().max(240), approvalRequired: z.literal(true),
+    icp: icpAgentContextSchema.optional(),
+    template: z.object({ name: z.string().max(120), category: z.string().max(120),
+      taskStrategy: z.string().max(2000), followupEnabled: z.boolean() }).strict().optional(),
+  }).strict(),
 }).strict();
 export type PlannerInput = z.infer<typeof plannerInputSchema>;
 

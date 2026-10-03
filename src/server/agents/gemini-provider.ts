@@ -11,7 +11,8 @@ import { RESEARCH_SYSTEM_PROMPT, TARGET_PROFILE_PROMPT, DISCOVERY_PROMPT, WEBSIT
 
 const responseSchema = z.object({
   candidates: z.array(z.object({ finishReason: z.string().optional(), content: z.object({ parts: z.array(z.object({ text: z.string().optional(), thought: z.boolean().optional() })) }).optional() })).optional(),
-  usageMetadata: z.object({ promptTokenCount: z.number().int().nonnegative().optional(), candidatesTokenCount: z.number().int().nonnegative().optional(), totalTokenCount: z.number().int().nonnegative().optional() }).optional(),
+  usageMetadata: z.object({ promptTokenCount: z.number().int().nonnegative().optional(), candidatesTokenCount: z.number().int().nonnegative().optional(), totalTokenCount: z.number().int().nonnegative().optional(),
+    cachedContentTokenCount: z.number().int().nonnegative().optional(), thoughtsTokenCount: z.number().int().nonnegative().optional() }).optional(),
 });
 
 export interface AnalysisProvider {
@@ -36,13 +37,16 @@ export class GeminiProvider implements AnalysisProvider, ResearchPlanningProvide
     }, Math.min(timeoutMs, 50_000));
     const parsed = responseSchema.safeParse(response);
     const candidate = parsed.success ? parsed.data.candidates?.[0] : undefined;
-    if (!parsed.success || candidate?.finishReason !== "STOP") throw new ResearchError("ai_invalid_output", "gemini");
+    const observed = parsed.success ? parsed.data.usageMetadata : undefined;
+    const usage: TokenUsage | null = observed ? { inputTokens: observed.promptTokenCount ?? null,
+      outputTokens: observed.candidatesTokenCount ?? null, totalTokens: observed.totalTokenCount ?? null,
+      cachedInputTokens: observed.cachedContentTokenCount ?? null, reasoningTokens: observed.thoughtsTokenCount ?? null,
+      reasoningIncludedInOutput: false } : null;
+    if (!parsed.success || candidate?.finishReason !== "STOP") throw new ResearchError("ai_invalid_output", "gemini", false, 1000, undefined, usage);
     const text = candidate.content?.parts.filter((part) => !part.thought).map((part) => part.text ?? "").join("");
-    const usage = parsed.data.usageMetadata;
     try {
-      return { output: JSON.parse(text || "") as unknown, usage: usage ? { inputTokens: usage.promptTokenCount ?? 0,
-        outputTokens: usage.candidatesTokenCount ?? 0, totalTokens: usage.totalTokenCount ?? 0 } : null };
-    } catch { throw new ResearchError("ai_invalid_output", "gemini"); }
+      return { output: JSON.parse(text || "") as unknown, usage };
+    } catch { throw new ResearchError("ai_invalid_output", "gemini", false, 1000, undefined, usage); }
   }
 
   analyze(input: ResearchInput, sources: ResearchSource[], model: string, timeoutMs: number) {
@@ -63,7 +67,7 @@ export class GeminiPlannerProvider implements PlannerProvider {
   async generate(input: PlannerInput, model: string, attempt: number) {
     try { return await new GeminiProvider().generateStructured(plannerOutputSchema, PLANNER_SYSTEM_PROMPT, { ...input, validationRetry: attempt > 1 }, model, 50_000); }
     catch (error) {
-      if (error instanceof ResearchError) throw new PlannerError(error.code === "validation" ? "ai_invalid_output" : error.code, error.retryable);
+      if (error instanceof ResearchError) throw new PlannerError(error.code === "validation" ? "ai_invalid_output" : error.code, error.retryable, error.usage);
       throw new PlannerError("ai_unavailable", false);
     }
   }

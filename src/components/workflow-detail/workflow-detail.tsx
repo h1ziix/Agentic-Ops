@@ -26,6 +26,9 @@ import { useWorkflowResearch } from "./use-workflow-research";
 import { ResearchRunPanel } from "./research-run-panel";
 import { PreparationRunPanel } from "./preparation-run-panel";
 import { ExecutionPanel } from "./execution-panel";
+import { useAutomation } from "@/components/automation/use-automation";
+import { WorkflowObservabilityMetrics, WorkflowRunList } from "@/components/automation/workflow-observability";
+import { WorkflowOutcomes } from "@/components/intelligence/workflow-outcomes";
 
 export function WorkflowDetail({ id }: { id: string }) {
   const { workflows, workflowStages, workflowTasks, companies, leads, approvals, activity, hydrated, mode, plannerRuns, researchRuns, preparationRuns } = useDemoStore();
@@ -35,8 +38,9 @@ export function WorkflowDetail({ id }: { id: string }) {
   const [tab, setTab] = useState("tasks");
   const reducedMotion = useReducedMotion();
   const workflow = workflows.find((item) => item.id === id);
+  const automation = useAutomation(id);
   const planning = useWorkflowPlanning(workflow);
-  const research = useWorkflowResearch(workflow);
+  const research = useWorkflowResearch(workflow, mode === "demo" ? false : automation.data?.enabled);
   if (!hydrated) return <div className="flex flex-col gap-6"><Skeleton className="h-28" /><Skeleton className="h-24" /><Skeleton className="h-96" /></div>;
   if (!workflow) return <EmptyState icon={CircleDot} title="Workflow not found" description="This workflow is unavailable in your workspace." action={<Link href="/workflows" className="interactive-link text-xs text-[var(--success-muted-fg)] hover:underline">Back to workflows</Link>} />;
 
@@ -65,7 +69,7 @@ export function WorkflowDetail({ id }: { id: string }) {
     : currentTask?.agent === "Outreach Agent" ? "The Outreach Agent is preparing messages from accepted evidence. Missing recipients will remain blocked."
     : planner?.status === "completed" ? "The workflow is advancing through supported research and preparation tasks. Results persist after every run."
     : currentTask ? `${currentTask.agent} owns the current task in this recorded run.` : "This workflow has not started execution.";
-  const tabs = [{ value: "tasks", label: "Task plan", count: tasks.length }, { value: "evidence", label: "Research", count: workflowCompanies.length }, { value: "trace", label: "Trace", count: workflowEvents.length }];
+  const tabs = [{ value: "tasks", label: "Task plan", count: tasks.length }, { value: "evidence", label: "Research", count: workflowCompanies.length }, { value: "trace", label: "Trace", count: workflowEvents.length }, ...(mode === "live" ? [{ value: "runs", label: "Runs & jobs", count: automation.data?.observability?.runs.length ?? 0 }] : [])];
 
   return <div className="flex flex-col gap-6">
     {mode === "live" && workflow.status === "paused" && !tasks.some((t) => t.type === "execute_approved_actions" && ["running", "failed", "blocked"].includes(t.status)) && <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-4"><p className="text-xs text-muted-foreground">Saved research is ready. Resume this workflow to continue its supported tasks.</p><Button size="sm" disabled={resuming} onClick={async () => { setResuming(true); setResumeError(""); const result = await resumeWorkflowAction(id); if (!result.ok) setResumeError(result.error); else router.refresh(); setResuming(false); }}>{resuming ? "Resuming…" : "Continue workflow"}</Button>{resumeError && <p role="alert" className="text-xs text-destructive">{resumeError}</p>}</div>}
@@ -84,16 +88,19 @@ export function WorkflowDetail({ id }: { id: string }) {
     </dl>
 
     <WorkflowProgress stages={stages} />
-    <ExecutionPanel workflowId={id} />
+    {mode === "live" && <WorkflowOutcomes workflow={workflow} />}
+    {mode === "live" && <WorkflowObservabilityMetrics workflow={workflow} automation={automation} />}
+    <ExecutionPanel workflowId={id} automation={automation} />
 
     <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_280px]">
       <Tabs.Root value={tab} onValueChange={(value) => setTab(String(value))} className="min-w-0">
-        <Tabs.List aria-label="Workflow views" className="mb-5 flex gap-6 border-b border-border">{tabs.map((item) => <Tabs.Tab key={item.value} value={item.value} className="interactive-tab relative flex items-center gap-2 pb-3 text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[active]:font-medium data-[active]:text-foreground">{item.label}<span className="font-mono text-[10px] text-muted-foreground">{item.count}</span>{tab === item.value && <motion.span layoutId={`workflow-tab-${id}`} className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" transition={{ type: "spring", duration: reducedMotion ? 0 : .3, bounce: 0 }} />}</Tabs.Tab>)}</Tabs.List>
+        <Tabs.List aria-label="Workflow views" className="mb-5 flex max-w-full gap-6 overflow-x-auto border-b border-border">{tabs.map((item) => <Tabs.Tab key={item.value} value={item.value} className="interactive-tab relative flex shrink-0 items-center gap-2 pb-3 text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-[active]:font-medium data-[active]:text-foreground">{item.label}<span className="font-mono text-[10px] text-muted-foreground">{item.count}</span>{tab === item.value && <motion.span layoutId={`workflow-tab-${id}`} className="absolute inset-x-0 bottom-0 h-0.5 bg-foreground" transition={{ type: "spring", duration: reducedMotion ? 0 : .3, bounce: 0 }} />}</Tabs.Tab>)}</Tabs.List>
         <Tabs.Panel value="tasks" className="outline-none"><motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .18 }} className="flex flex-col gap-5">{mode === "live" && <PlannerRunPanel run={planner} status={workflow.status} />}{mode === "live" && planner?.status === "completed" && <ResearchRunPanel runs={researchRuns.filter((run) => run.workflowId === id)} tasks={tasks} pending={research.pending} error={research.error} onRetry={research.retry} />}<PreparationRunPanel runs={preparationRuns.filter((run) => run.workflowId === id)} /><WorkflowTaskList tasks={tasks} failed={workflow.status === "failed"} /></motion.div></Tabs.Panel>
         <Tabs.Panel value="evidence" className="outline-none"><motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .18 }} className="flex flex-col gap-6">
           <WorkflowCompanies companies={workflowCompanies} total={workflow.companyCount} />
           <section className="border-t border-border pt-5"><div className="mb-4"><h2 className="text-sm font-semibold">Qualification evidence</h2><p className="mt-1 text-xs text-muted-foreground">The recorded explanation behind each opportunity score.</p></div>{workflowLeads.length ? <div className="divide-y divide-border">{workflowLeads.map((lead) => { const company = companies.find((item) => item.id === lead.companyId); return <article key={lead.id} className="py-4 first:pt-0"><div className="flex items-center justify-between gap-3"><Link href={`/companies?company=${lead.companyId}`} className="text-[13px] font-medium hover:underline">{company?.name ?? "Company"}</Link><LeadScore score={lead.score} /></div><p className="mt-2 text-xs leading-6 text-muted-foreground">{lead.scoreReason}</p><p className="mt-2 text-[10px] text-muted-foreground">{lead.confidence ? `${lead.confidence.charAt(0).toUpperCase() + lead.confidence.slice(1)} confidence` : "Confidence not assessed"} · {company?.sourceUrls.length ?? 0} source references</p></article>; })}</div> : <EmptyState icon={Building2} title="Evidence is still being gathered" description="Score explanations appear once researched companies become qualified leads." />}</section>
         </motion.div></Tabs.Panel>
+        {mode === "live" && <Tabs.Panel value="runs" className="outline-none"><WorkflowRunList workflow={workflow} tasks={tasks} automation={automation} /></Tabs.Panel>}
         <Tabs.Panel value="trace" className="outline-none"><motion.div initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .18 }}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2"><div><h2 className="text-sm font-semibold">Execution trace</h2><p className="mt-1 text-xs text-muted-foreground">Safe summaries, tool activity, and recorded decisions.</p></div><Link href={`/activity?workflow=${encodeURIComponent(id)}`} className="interactive-link inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">Open full trace<ArrowUpRight aria-hidden className="size-3" /></Link></div>
           {workflowEvents.length ? <ol className="overflow-hidden rounded-lg border border-border bg-card">{workflowEvents.map((event) => <ActivityItem key={event.id} event={event} workflowTitle={workflow.title} />)}</ol> : <EmptyState icon={Activity} title="No execution events yet" description="A visible audit record appears when this workflow starts." />}

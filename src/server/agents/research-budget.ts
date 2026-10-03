@@ -1,4 +1,5 @@
 import { AppError } from "../errors";
+import type { TokenUsage } from "./planner-agent";
 
 export const RESEARCH_LIMITS = Object.freeze({ searches: 2, searchRequests: 3, modelRequests: 2, retries: 1,
   sources: 8, resultsPerSearch: 4, sourceCharacters: 3500, outputTokens: 6000, durationMs: 170_000, cacheTtlMs: 86_400_000 });
@@ -6,7 +7,8 @@ export type ResearchProvider = "tavily" | "gemini";
 
 export class ResearchError extends AppError {
   constructor(public override readonly code: "ai_configuration" | "ai_quota_exhausted" | "ai_unavailable" | "ai_timeout" | "ai_invalid_output" | "validation",
-    public readonly provider: ResearchProvider, public readonly retryable = false, public readonly retryAfterMs = 1000, public readonly httpStatus?: number) {
+    public readonly provider: ResearchProvider, public readonly retryable = false, public readonly retryAfterMs = 1000, public readonly httpStatus?: number,
+    public readonly usage: TokenUsage | null = null) {
     super(code, ({ ai_configuration: `${provider} is not configured or accessible. Check the server credentials and model access.`,
       ai_quota_exhausted: `${provider} quota is exhausted. Check provider billing before retrying.`,
       ai_unavailable: `${provider} is temporarily unavailable or rate limited. Please retry later.`,

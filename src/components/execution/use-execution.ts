@@ -28,7 +28,7 @@ export function useExecution(workflowId: string) {
         const result = attemptRowSchema.parse(body);
         await refresh();
         if (result.status !== "succeeded") { setNotice(`Saved ${result.status.replaceAll("_", " ")}. Inspect the attempt before continuing.`); break; }
-        setNotice(result.verification_method === "user_confirmed" ? "Operator confirmation saved." : action.actionType === "send_email" ? "Gmail accepted the message. This does not confirm delivery or reading." : action.actionType === "schedule_follow_up" ? "Plan saved. Automatic execution will appear in Release 0.7." : "Approved CRM fields saved.");
+        setNotice(result.verification_method === "user_confirmed" ? "Operator confirmation saved." : action.actionType === "send_email" ? "Gmail accepted the message. This does not confirm delivery or reading." : action.actionType === "schedule_follow_up" ? "Plan saved. Background preparation creates a new draft for separate approval; no future email is authorized." : "Approved CRM fields saved.");
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Request interrupted. Refresh to inspect saved status; do not resend."); try { await refresh(); } catch { /* keep the original uncertainty visible */ } }
     finally { executing.current = false; if (mounted.current) setPending(""); }

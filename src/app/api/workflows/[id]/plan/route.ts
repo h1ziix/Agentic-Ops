@@ -1,5 +1,8 @@
 import { planWorkflow } from "@/server/services/planning-service";
 import { AppError } from "@/server/errors";
+import { automationConfiguration } from "@/server/automation/config";
+import { scheduleWorkflowAutomation } from "@/server/services/automation-service";
+import { mutationBody } from "@/server/http/mutations";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -11,6 +14,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   const { id } = await context.params;
   try {
+    await mutationBody(request);
+    if (automationConfiguration().enabled) {
+      const job = await scheduleWorkflowAutomation(id);
+      return Response.json({ status: "in_progress", runId: job.id });
+    }
     return Response.json(await planWorkflow(id));
   } catch (error) {
     if (error instanceof AppError) {

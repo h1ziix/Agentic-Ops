@@ -44,7 +44,7 @@ function ActivityWorkspace() {
     <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-border pb-5">
       <div className="flex items-baseline gap-2"><span className="font-mono text-2xl font-medium tabular-nums">{workflowEvents.length}</span><span className="text-xs text-muted-foreground">{workflowEvents.length === 1 ? "recorded event" : "recorded events"}</span></div>
       <div className="flex items-baseline gap-2"><span className="font-mono text-2xl font-medium tabular-nums">{workflowEvents.filter((event) => event.category === "tool").length}</span><span className="text-xs text-muted-foreground">tool events</span></div>
-      <div className="flex items-baseline gap-2"><span className={attentionCount ? "font-mono text-2xl font-medium tabular-nums text-[var(--danger-fg)]" : "font-mono text-2xl font-medium tabular-nums"}>{attentionCount}</span><span className="text-xs text-muted-foreground">needs attention</span></div>
+      <div className="flex items-baseline gap-2"><span className={attentionCount ? "font-mono text-2xl font-medium tabular-nums text-[var(--danger-fg)]" : "font-mono text-2xl font-medium tabular-nums"}>{attentionCount}</span><span className="text-xs text-muted-foreground">recorded failures</span></div>
       <span className="ml-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground lg:flex"><ShieldCheck aria-hidden className="size-3.5" />Safe summaries and recorded results</span>
     </div>
     <Tabs.Root value={filter} onValueChange={(value) => setFilter(value as Filter)} className="flex flex-col gap-4">

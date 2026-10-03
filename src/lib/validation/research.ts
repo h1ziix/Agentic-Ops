@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { publicWebsiteSchema, normalizeDomain } from "../company-identity";
+import { icpAgentContextSchema } from "./strategy";
 export { publicWebsiteSchema } from "../company-identity";
 
 const text = z.string().trim().min(1);
@@ -17,11 +18,13 @@ export const workflowResearchInputSchema = z.object({
   requestedCompanyCount: z.number().int().min(1).max(20),
   plannerContext: z.object({ objective: text.max(1000), expectedOutput: text.max(1000) }).strict(),
   existingCompanies: z.array(z.object({ name: text.max(240), website: publicWebsiteSchema.nullable() }).strict()).max(1000),
+  icpContext: icpAgentContextSchema.optional(),
 }).strict();
 export type WorkflowResearchInput = z.infer<typeof workflowResearchInputSchema>;
 export const researchInputSchema = z.object({
   name: text.max(240), website: publicWebsiteSchema.nullable(), goal: text.min(10).max(4000), icp: icpSchema,
   location: text.max(240).nullable().optional(),
+  icpContext: icpAgentContextSchema.optional(),
 }).strict();
 export type ResearchInput = z.infer<typeof researchInputSchema>;
 export const researchSourceSchema = z.object({

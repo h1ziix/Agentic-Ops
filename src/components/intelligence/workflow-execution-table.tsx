@@ -1,0 +1,11 @@
+import Link from "next/link";
+import type { WorkflowIntelligence } from "@/types/intelligence";
+import { number, money } from "./format";
+
+export function WorkflowExecutionTable({ workflows }: { workflows: WorkflowIntelligence[] }) {
+  return <details>
+    <summary className="w-fit cursor-pointer rounded text-xs font-medium focus-visible:outline-2 focus-visible:outline-ring">Detailed workflow outcomes, usage & unit costs</summary>
+    <p className="mt-3 text-[11px] leading-5 text-muted-foreground">Costs cover whole matching workflows. Lead and company filters cannot allocate shared agent spend, so unit costs are unavailable under those filters.</p>
+    <div tabIndex={0} role="region" aria-label="Detailed workflow metrics, scroll horizontally" className="mt-3 overflow-x-auto rounded-md border border-border bg-card focus-visible:outline-2 focus-visible:outline-ring"><table className="w-full min-w-[1400px] text-left text-[11px]"><thead className="border-b border-border bg-muted/30 text-[10px] text-muted-foreground"><tr>{["Workflow", "Discovered", "High confidence", "Median score", "Reviewer accepted", "Drafts", "Requested", "Approved", "Agent runs", "Tool calls", "Retries", "AI tokens", "Known cost subtotal", "Cost / researched", "Cost / sent"].map((label) => <th key={label} scope="col" className="whitespace-nowrap px-3 py-3 font-medium">{label}</th>)}</tr></thead><tbody className="divide-y divide-border">{workflows.map((workflow) => <tr key={workflow.id}><th scope="row" className="max-w-[220px] px-3 py-3 font-normal"><Link className="block truncate hover:underline" href={`/workflows/${workflow.id}`}>{workflow.title}</Link></th>{[workflow.discovered, workflow.highConfidence, workflow.medianScore, workflow.reviewerApproved, workflow.drafts, workflow.approvalRequested, workflow.approved, workflow.agentRuns, workflow.toolCalls, workflow.retries, workflow.totalTokens].map((value, index) => <td key={index} className="px-3 py-3 font-mono tabular-nums">{number(value, index === 2 ? 1 : 0)}</td>)}{[workflow.knownEstimatedCostUsd, workflow.costPerCompany, workflow.costPerSent].map((value, index) => <td key={index} className="whitespace-nowrap px-3 py-3 font-mono tabular-nums">{money(value)}</td>)}</tr>)}</tbody></table></div>
+  </details>;
+}

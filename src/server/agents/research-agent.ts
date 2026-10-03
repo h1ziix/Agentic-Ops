@@ -5,6 +5,8 @@ import type { RuntimeEvent } from "./agent-runtime";
 import type { AnalysisProvider, ResearchPlanningProvider } from "./gemini-provider";
 import type { SearchProvider } from "./tavily-provider";
 import { RESEARCH_LIMITS, ResearchBudget, ResearchError, type ResearchProvider } from "./research-budget";
+import type { TokenUsage } from "./planner-agent";
+import { recordTokenUsage } from "../observability/runtime-telemetry";
 
 export interface ResearchCache {
   get(query: string, domain: string): Promise<ResearchSource[] | null>;
@@ -16,18 +18,18 @@ export class ResearchAgent {
   constructor(private readonly search: SearchProvider, private readonly analysis: AnalysisProvider, private readonly cache: ResearchCache,
     private readonly wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)), private readonly planning?: ResearchPlanningProvider) {}
 
-  private usage(metrics: AgentMetrics, usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null) {
-    if (!usage) return;
-    metrics.inputTokens = (metrics.inputTokens ?? 0) + usage.inputTokens;
-    metrics.outputTokens = (metrics.outputTokens ?? 0) + usage.outputTokens;
-    metrics.totalTokens = (metrics.totalTokens ?? 0) + usage.totalTokens;
+  private usage(metrics: AgentMetrics, usage: TokenUsage | null, model: string) {
+    recordTokenUsage(metrics, usage, model);
   }
 
-  private async bounded<T>(budget: ResearchBudget, provider: ResearchProvider, record: RuntimeEvent, metrics: AgentMetrics, execute: () => Promise<T>): Promise<T> {
+  private async bounded<T>(budget: ResearchBudget, provider: ResearchProvider, record: RuntimeEvent, metrics: AgentMetrics, execute: () => Promise<T>, model?: string): Promise<T> {
     for (;;) {
       budget.reserve(provider);
       try { return await execute(); }
       catch (error) {
+        if (provider === "gemini" && model) this.usage(metrics, error instanceof ResearchError ? error.usage : null, model);
+        if (provider === "tavily") await record("tool_failed", "Search request failed safely", { tool_name: "tavily_search", provider,
+          error_code: error instanceof ResearchError ? error.code : "internal" });
         if (!(error instanceof ResearchError) || !budget.retry(error)) throw error;
         metrics.retryCount = budget.retryCount;
         await record("retry", `Retrying ${provider} within the research budget`, { provider, delay_ms: error.retryAfterMs });
@@ -41,8 +43,8 @@ export class ResearchAgent {
     if (!this.planning) throw new ResearchError("ai_configuration", "gemini");
     const budget = new ResearchBudget();
     await record("model_request_started", "Defining the target profile and focused discovery queries", { model });
-    const result = await this.bounded(budget, "gemini", record, metrics, () => this.planning!.profile(input, model, budget.remainingMs()));
-    this.usage(metrics, result.usage);
+    const result = await this.bounded(budget, "gemini", record, metrics, () => this.planning!.profile(input, model, budget.remainingMs()), model);
+    this.usage(metrics, result.usage, model);
     return targetProfileSchema.parse(result.output);
   }
 
@@ -66,8 +68,8 @@ export class ResearchAgent {
     }
     if (!sources.length) throw new ResearchError("ai_invalid_output", "tavily");
     await record("model_request_started", "Extracting companies supported by discovery sources", { model, source_count: sources.length });
-    const result = await this.bounded(budget, "gemini", record, metrics, () => this.planning!.discover(input, profile, sources, model, budget.remainingMs()));
-    this.usage(metrics, result.usage);
+    const result = await this.bounded(budget, "gemini", record, metrics, () => this.planning!.discover(input, profile, sources, model, budget.remainingMs()), model);
+    this.usage(metrics, result.usage, model);
     const valid = validateDiscovery(result.output, sources);
     const candidates = deduplicateCompanies(valid.candidates.map((company) => ({ ...company, website: company.website ? normalizeWebsite(company.website) : null })))
       .slice(0, input.requestedCompanyCount);
@@ -84,6 +86,7 @@ export class ResearchAgent {
         budget.reserve(provider);
         try { return await execute(); }
         catch (error) {
+          if (provider === "gemini") this.usage(metrics, error instanceof ResearchError ? error.usage : null, model);
           if (error instanceof ResearchError) await record(provider === "tavily" ? "tool_failed" : "error", `${provider} request failed safely`, {
             provider, error_code: error.code, http_status: error.httpStatus ?? 0, retry_after_ms: error.retryAfterMs,
           });
@@ -108,7 +111,7 @@ export class ResearchAgent {
       await record("tool_completed", "Official website search completed", { tool_name: "tavily_search", source_count: found.length, cached: cached ? 1 : 0 });
       await record("model_request_started", "Resolving company identity from public website evidence", { model, source_count: found.length });
       const result = await call("gemini", () => this.planning!.resolve(input, found, model, budget.remainingMs()));
-      this.usage(metrics, result.usage);
+      this.usage(metrics, result.usage, model);
       try { website = validateDiscovery(result.output, found).candidates.find((candidate) => candidate.website)?.website ?? null; }
       catch { throw new ResearchError("ai_invalid_output", "gemini"); }
       await record("reasoning_summary", "Official website candidates validated against search sources", { supported_website: website ? 1 : 0 });
@@ -139,22 +142,20 @@ export class ResearchAgent {
       await record("tool_completed", "Tavily evidence normalized", { tool_name: "tavily_search", query, cached: cached ? 1 : 0, source_count: results.length });
     }
     if (!sources.length) throw new ResearchError("ai_invalid_output", "tavily");
-    const analysis = await call("gemini", async () => {
+    const analysisResult = await call("gemini", async () => {
       await record("model_request_started", "Analyzing website evidence and qualifying the automation opportunity", { model, source_count: sources.length });
-      const result = await this.analysis.analyze({ ...input, website }, sources, model, budget.remainingMs());
-      if (result.usage) {
-        metrics.inputTokens = (metrics.inputTokens ?? 0) + result.usage.inputTokens;
-        metrics.outputTokens = (metrics.outputTokens ?? 0) + result.usage.outputTokens;
-        metrics.totalTokens = (metrics.totalTokens ?? 0) + result.usage.totalTokens;
-      }
-      try { return validateResearchAnalysis(result.output, sources); }
+      return this.analysis.analyze({ ...input, website }, sources, model, budget.remainingMs());
+    });
+    this.usage(metrics, analysisResult.usage, model);
+    const analysis = await (async () => {
+      try { return validateResearchAnalysis(analysisResult.output, sources); }
       catch (error) {
         const reason = error instanceof Error && ["Unsupported evidence citation", "Unknown evidence source", "Score components must sum to the score", "Unsupported employee estimate"].includes(error.message)
           ? error.message : "Invalid structured assessment";
         await record("error", `Company assessment rejected: ${reason.toLowerCase()}.`, { validation_reason: reason });
         throw new ResearchError("ai_invalid_output", "gemini");
       }
-    });
+    })();
     metrics.taskCount = 1;
     await record("reasoning_summary", "Company facts and opportunity citations validated against public evidence", {
       source_count: sources.length, lead_score: analysis.lead.score,

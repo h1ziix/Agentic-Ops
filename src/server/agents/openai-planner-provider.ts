@@ -5,7 +5,7 @@ import { z } from "zod";
 import { plannerOutputSchema, type PlannerInput } from "@/lib/validation/planner";
 import { PLANNER_MAX_OUTPUT_TOKENS, PLANNER_TIMEOUT_MS } from "./config";
 import { PlannerError } from "./errors";
-import type { PlannerProvider, PlannerProviderResult } from "./planner-agent";
+import type { PlannerProvider, PlannerProviderResult, TokenUsage } from "./planner-agent";
 import { PLANNER_SYSTEM_PROMPT } from "./planner-prompt";
 
 export class OpenAIPlannerProvider implements PlannerProvider {
@@ -25,13 +25,18 @@ export class OpenAIPlannerProvider implements PlannerProvider {
         max_output_tokens: PLANNER_MAX_OUTPUT_TOKENS,
         store: false,
       }, { timeout: PLANNER_TIMEOUT_MS, maxRetries: 0 });
+      const usage: TokenUsage | null = response.usage ? { inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens,
+        cachedInputTokens: response.usage.input_tokens_details?.cached_tokens ?? null,
+        cacheWriteTokens: response.usage.input_tokens_details?.cache_write_tokens ?? null,
+        reasoningTokens: response.usage.output_tokens_details?.reasoning_tokens ?? null, reasoningIncludedInOutput: true } : null;
       if (response.output.some((item) => item.type === "message" && item.content.some((content) => content.type === "refusal"))) {
-        throw new PlannerError("ai_refused", false);
+        throw new PlannerError("ai_refused", false, usage);
       }
-      if (response.status !== "completed" || !response.output_parsed) throw new PlannerError("ai_invalid_output", true);
+      if (response.status !== "completed" || !response.output_parsed) throw new PlannerError("ai_invalid_output", true, usage);
       return {
         output: response.output_parsed,
-        usage: response.usage ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens, totalTokens: response.usage.total_tokens } : null,
+        usage,
       };
     } catch (error) {
       if (error instanceof PlannerError) throw error;

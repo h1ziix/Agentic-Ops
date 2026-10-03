@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { ThemeSelector } from "@/components/app/theme-selector";
 import { useDemoStore } from "@/components/app/demo-store";
 import { IntegrationSettings } from "@/components/integrations/integration-settings";
+import { AutomationSettings } from "@/components/automation/automation-settings";
 import { cn } from "@/lib/utils";
 
 const settingsSections = [
@@ -12,6 +13,7 @@ const settingsSections = [
   { id: "appearance", label: "Appearance", icon: Monitor },
   { id: "agents", label: "Agents", icon: Bot },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "automation", label: "Automation", icon: GitBranch },
   { id: "guardrails", label: "Guardrails", icon: ShieldCheck },
 ] as const;
 const agentRoles = [
@@ -55,10 +57,14 @@ export default function SettingsPage() {
             <SectionHeading title="Integrations" description="Connect approved execution to your mailbox and CRM." />
             <IntegrationSettings />
           </section>
+          <section id="automation" className="scroll-mt-8">
+            <SectionHeading title="Automation" description="Durable background work with visible approvals and recovery." />
+            <AutomationSettings />
+          </section>
           <section id="guardrails" className="scroll-mt-8">
             <SectionHeading title="Operating guardrails" description="Keep human judgment at the center of every external action." />
             <div className="flex items-start gap-3 border-b border-border py-5"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--success-fg)]" /><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">Approval before execution</p><p className="mt-1 max-w-xl text-xs leading-6 text-muted-foreground">Review the exact recipient, account, evidence and content. Email, CRM and internal follow-up plans have independent approvals and explicit Execute.</p></div><span className="rounded-md border border-[var(--success-border)] bg-[var(--success-bg)] px-2 py-1 text-[10px] font-medium text-[var(--success-fg)]">Required</span></div>
-            <div className="flex items-start gap-3 border-b border-border py-5"><GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="text-[13px] font-medium">Schedules, retries, and follow-ups</p><p className="mt-1 text-xs leading-6 text-muted-foreground">Execution retries require a definitive unsent result and an explicit request. Unknown outcomes block resend. Follow-up plans are internal; automatic dispatch and Calendar belong to Release 0.7.</p></div></div>
+            <div className="flex items-start gap-3 border-b border-border py-5"><GitBranch className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><div><p className="text-[13px] font-medium">Schedules, retries, and follow-ups</p><p className="mt-1 text-xs leading-6 text-muted-foreground">Safe preparation retries are bounded. External action retries require a definitive retryable failure and retain the exact approved snapshot. Unknown outcomes block resend. Due follow-ups create drafts for new approval; Calendar requires a separate future integration.</p></div></div>
           </section>
         </div>
       </div>

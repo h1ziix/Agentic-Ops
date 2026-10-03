@@ -23,6 +23,17 @@ test("normalization preserves actual source URLs, removes unsafe/duplicate/empty
   }
 });
 
+test("public evidence with a DNS root dot is canonicalized and deduplicated safely", () => {
+  const output = normalizeTavilySources({ results: [
+    { url: "https://rekassa.kz./product?lang=ru#details", title: "Product", content: "Public product evidence", score: .9 },
+    { url: "https://rekassa.kz/product?lang=ru#duplicate", title: "Duplicate", content: "Same source", score: .9 },
+    { url: "https://host.internal./private", title: "Internal", content: "Private", score: 1 },
+    { url: "https://127.0.0.1./private", title: "IP", content: "Private", score: 1 },
+  ] });
+  assert.equal(output.length, 1);
+  assert.equal(output[0].url, "https://rekassa.kz/product?lang=ru#details");
+});
+
 test("structured analysis rejects fabricated evidence, unknown citations, unsupported status fields and inconsistent scores", () => {
   assert.deepEqual(validateResearchAnalysis(researchAnalysis, researchSources), researchAnalysis);
   for (const mutate of [

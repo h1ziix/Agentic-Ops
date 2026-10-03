@@ -11,6 +11,7 @@ import { WorkflowSignal } from "@/components/dashboard/workflow-signal";
 import { PriorityWorkflows } from "@/components/dashboard/priority-workflows";
 import { ApprovalPreview } from "@/components/dashboard/approval-preview";
 import { ExecutionSnapshot } from "@/components/dashboard/execution-snapshot";
+import { OperationsOverview } from "@/components/automation/operations-overview";
 
 export default function DashboardPage() {
   const { workflows, workflowStages, approvals, activity, mode } = useDemoStore();
@@ -52,6 +53,8 @@ export default function DashboardPage() {
         waitingCount={waitingCount}
         pendingCount={pendingCount}
       />
+      <OperationsOverview />
+      <Link href="/intelligence" className="inline-flex w-fit items-center gap-1.5 rounded text-[11px] text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">Explore historical outcomes and estimated AI cost<ArrowUpRight className="size-3" /></Link>
 
       <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">
         {focus ? (
@@ -94,7 +97,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5"><ShieldCheck className="size-3" />Every external action begins with your approval.</span>
         <Link href="/settings" className="inline-flex items-center gap-1 rounded px-1 py-1 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-          {mode === "live" ? "Workspace data · External execution off" : "Fictional data · Local demo"} <ArrowUpRight className="size-3" />
+          {mode === "live" ? "Workspace data · Exact approval required" : "Fictional data · Local demo"} <ArrowUpRight className="size-3" />
         </Link>
       </div>
     </div>

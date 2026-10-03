@@ -1,7 +1,10 @@
 import { plannerInputSchema, validatedPlannerOutputSchema, type PlannerInput, type PlannerOutput } from "@/lib/validation/planner";
 import { PlannerError } from "./errors";
 
-export interface TokenUsage { inputTokens: number; outputTokens: number; totalTokens: number }
+export interface TokenUsage {
+  inputTokens: number | null; outputTokens: number | null; totalTokens: number | null;
+  cachedInputTokens?: number | null; cacheWriteTokens?: number | null; reasoningTokens?: number | null; reasoningIncludedInOutput?: boolean;
+}
 export interface PlannerProviderResult { output: unknown; usage: TokenUsage | null }
 export interface PlannerProvider {
   generate(input: PlannerInput, model: string, attempt: number): Promise<PlannerProviderResult>;

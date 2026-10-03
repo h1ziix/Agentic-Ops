@@ -2,9 +2,11 @@
 
 ## Current release boundary
 
-The stages below are historical planning. Release 0.6 extends 0.5 with a deterministic Executor, Gmail/HubSpot OAuth and exact approved messages/contact patches, plus internal follow-up plans. Approve and Execute remain separate; legacy content approvals never grant execution rights. The operational dark/light SaaS design and existing pipeline remain authoritative.
+The stages below are historical planning. Release 0.8 extends the existing execution and automation layers with Product Intelligence, saved Ideal Customer Profiles and Workflow Templates. The operational dark/light SaaS design, Orchestrator, AgentRuntime, deterministic Executor and existing repositories remain authoritative.
 
-Release 0.7 owns Calendar, background continuation, scheduled retries, separately approved future follow-up dispatch, monitoring and recovery/reconciliation jobs, even where the old stages group them together. Controlled live verification is a 0.6 acceptance gate; missing consent/configuration must be reported explicitly.
+Intelligence uses real persisted records, workspace-safe aggregation, documented company-workflow cohort semantics and nullable usage/cost. Templates guide the Planner; explicit goals remain authoritative. Workflow strategy and lead research/qualification snapshots preserve history after source edits. Analytics do not automatically change prompts, scores, models or approval policy.
+
+Approve and Execute remain separate; follow-up timers create fresh proposals. Existing Release 0.7 live worker/reply verification gaps remain open until exercised. Missing Trigger configuration, verified model pricing or mailbox-read consent must remain visible as unavailable. Calendar, billing, major redesign, Release 0.9 portfolio work and deployment are outside this release. Implementation and mocked checks do not certify live acceptance.
 
 ## Product Definition
 

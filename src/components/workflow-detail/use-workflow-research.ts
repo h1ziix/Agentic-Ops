@@ -7,7 +7,7 @@ import { z } from "zod";
 const responseSchema = z.object({ status: z.enum(["more", "in_progress", "research_complete", "failed", "waiting_for_approval", "preparation_complete"]), runId: z.uuid().optional() });
 const failureSchema = z.object({ error: z.string() });
 
-export function useWorkflowResearch(workflow: Workflow | undefined) {
+export function useWorkflowResearch(workflow: Workflow | undefined, backgroundAutomationEnabled?: boolean) {
   const { mode, plannerRuns, updateWorkflow, workflowTasks } = useDemoStore();
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -42,6 +42,7 @@ export function useWorkflowResearch(workflow: Workflow | undefined) {
           throw new Error(failure.success ? failure.data.error : "Research could not continue. Resume after checking the trace.");
         }
         const saved = await refresh(id);
+        if (backgroundAutomationEnabled && result.data.status === "in_progress") break;
         if (["research_complete", "waiting_for_approval", "preparation_complete"].includes(result.data.status) || saved?.status !== "running") break;
         if (result.data.status === "failed") throw new Error("A research task needs attention. Successful company results are retained.");
         if (result.data.status === "in_progress") await new Promise<void>((resolve) => setTimeout(resolve, 2000));
@@ -53,9 +54,9 @@ export function useWorkflowResearch(workflow: Workflow | undefined) {
         try { await refresh(id); } catch { /* Preserve the actionable request error. */ }
       }
     } finally { executing.current = false; if (alive.current) setPending(false); }
-  }, [refresh, router]);
+  }, [refresh, router, backgroundAutomationEnabled]);
   const id = workflow?.id;
-  const ready = mode === "live" && workflow?.status === "running" && plannerRuns.some((run) => run.workflowId === id && run.status === "completed");
+  const ready = mode === "live" && backgroundAutomationEnabled === false && workflow?.status === "running" && plannerRuns.some((run) => run.workflowId === id && run.status === "completed");
   const failedTask = workflowTasks.some((task) => task.workflowId === id && task.status === "failed");
   useEffect(() => {
     if (!ready || !id || failedTask || pending || executing.current || started.current === id) return;
@@ -63,15 +64,15 @@ export function useWorkflowResearch(workflow: Workflow | undefined) {
     void start(id);
   }, [ready, id, failedTask, pending, start]);
   useEffect(() => {
-    if (mode !== "live" || !id || !pending) return;
+    if (mode !== "live" || !id || (!pending && !(backgroundAutomationEnabled && workflow?.status === "running"))) return;
     let polling = false;
     const timer = setInterval(async () => {
       if (polling || document.hidden) return;
       polling = true;
       try { await refresh(id); } catch { /* The dispatch request reports failures; polling reconnects next tick. */ }
       finally { polling = false; }
-    }, 1500);
+    }, backgroundAutomationEnabled ? 3000 : 1500);
     return () => clearInterval(timer);
-  }, [mode, id, pending, refresh]);
+  }, [mode, id, pending, refresh, backgroundAutomationEnabled, workflow?.status]);
   return { pending, error, retry: () => id && void start(id, true), resume: () => id && void start(id) };
 }

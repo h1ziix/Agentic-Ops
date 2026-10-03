@@ -34,6 +34,15 @@ test("presentation shows completed planning and pending task execution with safe
   assert.equal(view.workflows[0].companyCount, 0);
 });
 
+test("lead reply presentation uses positive persisted observations and never infers replies from a lead status", () => {
+  const data = snapshot(); const now = data.workflows[0].created_at; const leadId = randomUUID();
+  data.leads.push({ id: leadId, workspace_id: data.workspace.id, workflow_id: data.workflows[0].id, company_id: randomUUID(),
+    status: "responded", score: 70, score_reason: "Saved assessment", opportunity: "Customer support", confidence: "medium", outreach_status: "sent", created_at: now, updated_at: now });
+  assert.equal(toWorkspaceView(data).leads[0].replyStatus, "unavailable");
+  data.repliedLeadIds = [leadId];
+  assert.equal(toWorkspaceView(data).leads[0].replyStatus, "detected");
+});
+
 test("failed planning displays an error stage and correctly categorizes workflow failures", () => {
   const data = snapshot();
   data.workflows[0].status = "failed";

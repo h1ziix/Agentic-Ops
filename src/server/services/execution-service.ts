@@ -26,7 +26,18 @@ export async function executeAction(workflowId: string, input: unknown) {
   const executor = new Executor(repository, new IntegrationService(new IntegrationRepository(admin)));
   const orchestrator = new Orchestrator({ getWorkflowById: workflows.getWorkflowById.bind(workflows), listWorkflowTasks: workflows.listWorkflowTasks.bind(workflows),
     listWorkspaceRuns: runs.listWorkspaceRuns.bind(runs) }, new AgentRunService(runs), new EventService(new AgentEventRepository(admin)), new AgentRuntime(null), undefined, undefined, undefined, executor);
-  return orchestrator.executeAction({ ...request, workspaceId: context.workspace.id, userId: context.user.id, workflowId: id });
+  const result = await orchestrator.executeAction({ ...request, workspaceId: context.workspace.id, userId: context.user.id, workflowId: id });
+  if (result.status === "succeeded") {
+    const { automationConfiguration } = await import("../automation/config");
+    if (automationConfiguration().enabled) {
+      try { await (await import("./automation-service")).activateApprovedFollowups(id); }
+      catch { // Preserve the confirmed provider/internal result. The maintenance outbox can recover plan scheduling.
+        await new EventService(new AgentEventRepository(admin)).record({ workspaceId: context.workspace.id, workflowId: id, eventType: "automation_failed",
+          summary: "Follow-up scheduling needs attention; the confirmed execution result is retained.", metadata: { attempt_id: result.id, error_code: "followup_scheduling_failed" } }).catch(() => {});
+      }
+    }
+  }
+  return result;
 }
 export async function recoverExecution(workflowId: string) {
   const id = z.uuid().parse(workflowId); const context = await requireWorkspace();

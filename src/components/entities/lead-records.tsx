@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowUpRight } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";
 import { CompanyMark, RecordChevron, ScoreRail } from "@/components/entities/entity-ui";

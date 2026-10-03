@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowDownWideNarrow } from "lucide-react";
 import type { IntelligenceSegment, UsageIntelligence, WorkflowIntelligence } from "@/types/intelligence";
 import { number, money, percent, duration } from "./format";

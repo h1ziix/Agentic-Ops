@@ -269,6 +269,7 @@ export interface DashboardMetrics {
 }
 
 export interface WorkspaceViewData {
+  historyWindows?: import("./persistence").HistoryWindows;
   integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
   followUpPlans?: import("@/lib/validation/execution").FollowUpPlan[];
   workspace: Workspace;

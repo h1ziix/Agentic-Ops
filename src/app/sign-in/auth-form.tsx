@@ -32,6 +32,6 @@ export function AuthForm({ mode, configured, confirmationError }: { mode: "sign-
       {state.message && <p role="status" className="text-xs text-[var(--success-fg)]">{state.message}</p>}
       <Button type="submit" disabled={!configured || pending} className="w-full">{pending ? "Please wait…" : creating ? "Create account" : "Sign in"}<ArrowRight data-icon="inline-end" /></Button>
     </form>
-    <p className="border-t border-border px-6 py-4 text-[11px] leading-5 text-muted-foreground">External actions remain behind a human approval gate. No outreach is sent during this stage.</p>
+    <div className="border-t border-border px-6 py-4"><p className="text-[11px] leading-5 text-muted-foreground">Research autonomously. Review the exact proposal, approve, then Execute separately.</p><Link href="/demo" className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-[var(--brand-accent)] hover:underline">Explore the safe demo · no account needed<ArrowRight className="size-3" /></Link></div>
   </div>;
 }

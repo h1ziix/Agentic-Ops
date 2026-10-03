@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { approvalMessageSchema } from "@/lib/validation/approval";
 
-const storageKey = "agentic-ops-approval-drafts-v1";
+const storageKey = "agentic-ops-demo-approval-drafts-v09";
 export const approvalDraftSchema = approvalMessageSchema;
 export type ApprovalDraft = z.infer<typeof approvalDraftSchema>;
 const storedDraftsSchema = z.record(z.string(), approvalDraftSchema);

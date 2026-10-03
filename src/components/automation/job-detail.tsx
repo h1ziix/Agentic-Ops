@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { useRef } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { StatusBadge } from "@/components/app/status-badge";

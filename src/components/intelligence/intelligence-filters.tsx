@@ -1,6 +1,6 @@
 import type { IntelligenceData, IntelligenceFilters } from "@/types/intelligence";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 
 const selectClass = "h-9 min-w-0 w-full rounded-md border border-input bg-card px-2.5 text-xs focus-visible:outline-2 focus-visible:outline-ring";
 export function IntelligenceFilterControls({ data, filters }: { data?: IntelligenceData; filters?: Partial<IntelligenceFilters> }) {

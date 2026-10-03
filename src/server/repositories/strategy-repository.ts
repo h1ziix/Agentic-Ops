@@ -17,14 +17,14 @@ export class StrategyRepository implements StrategyStore {
   async listIcps(workspaceId: string, includeArchived = false) {
     let query = this.supabase.from("ideal_customer_profiles").select("*").eq("workspace_id", workspaceId);
     if (!includeArchived) query = query.is("archived_at", null);
-    const { data, error } = await query.order("updated_at", { ascending: false });
+    const { data, error } = await query.order("updated_at", { ascending: false }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_icps", error);
     return parseDatabaseResult(z.array(icpRowSchema), data, "list_icps");
   }
   async listTemplates(workspaceId: string, includeArchived = false) {
     let query = this.supabase.from("workflow_templates").select("*").eq("workspace_id", workspaceId);
     if (!includeArchived) query = query.is("archived_at", null);
-    const { data, error } = await query.order("updated_at", { ascending: false });
+    const { data, error } = await query.order("updated_at", { ascending: false }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_templates", error);
     return parseDatabaseResult(z.array(templateRowSchema), data, "list_templates");
   }

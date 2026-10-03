@@ -15,7 +15,9 @@ const themeBootstrap = `try {
 
 export const metadata: Metadata = {
   title: "Agentic Ops",
-  description: "An operational workspace for autonomous sales research",
+  description: "Turn business goals into auditable sales research, qualification, outreach and follow-up workflows. Human approval before external action.",
+  applicationName: "Agentic Ops",
+  openGraph: { title: "Agentic Ops", description: "Auditable sales operations. Agent research, human decisions, explicit execution.", type: "website" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

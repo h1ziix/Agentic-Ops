@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowRight, Building2, CheckCheck, FileText, GitBranch, Mail, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { ScoreBreakdown } from "./score-breakdown";
 import { ResearchSources } from "./research-sources";
 import { LeadAutomation } from "@/components/automation/lead-automation";
 
-export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
+export function LeadDetails({ lead, onClose, finalFocus }: { lead: Lead | null; onClose: () => void; finalFocus?: () => HTMLElement | null }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [open, setOpen] = useState(true);
   const { drafts } = useApprovalDrafts();
@@ -31,7 +31,7 @@ export function LeadDetails({ lead, onClose }: { lead: Lead | null; onClose: () 
   const events = activity.filter((event) => event.workflowId === lead.workflowId && (event.leadId === lead.id || event.companyId === lead.companyId));
 
   return <Sheet open={open} onOpenChange={setOpen} onOpenChangeComplete={(nextOpen) => { if (!nextOpen) onClose(); }}>
-    <SheetContent initialFocus={titleRef} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
+    <SheetContent initialFocus={titleRef} finalFocus={finalFocus} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
       <SheetHeader className="gap-0 border-b border-border px-6 pb-5 pt-7">
         <p className="section-label mb-5">Lead / Opportunity</p>
         <div className="flex items-center gap-3.5"><CompanyMark name={company?.name ?? "Company"} large /><div className="min-w-0"><SheetTitle ref={titleRef} tabIndex={-1} className="text-xl tracking-tight outline-none">{company?.name ?? "Company"}</SheetTitle><SheetDescription className="mt-1">{company?.industry} · {company?.location.split(",")[0]}</SheetDescription></div></div>

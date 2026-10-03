@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowRight, Check, FileText, GitBranch, Globe, ScanSearch, Target } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -13,17 +13,20 @@ import type { Company } from "@/types/domain";
 import { ResearchSources } from "./research-sources";
 import { ScoreBreakdown } from "./score-breakdown";
 
-export function CompanyDetails({ company, onClose }: { company: Company | null; onClose: () => void }) {
+export function CompanyDetails({ company, onClose, finalFocus }: { company: Company | null; onClose: () => void; finalFocus?: () => HTMLElement | null }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [open, setOpen] = useState(true);
   const { workflows, leads, activity } = useProspectData();
   if (!company) return null;
   const workflow = workflows.find((item) => item.id === company.workflowId);
-  const lead = leads.find((item) => item.companyId === company.id);
+  const lead = leads.filter((item) => item.companyId === company.id)
+    .sort((a, b) => Date.parse(b.createdAt ?? b.updatedAt) - Date.parse(a.createdAt ?? a.updatedAt))[0];
+  const assessment = lead ? { score: lead.score, opportunity: lead.opportunity, scoreReason: lead.scoreReason, confidence: lead.confidence, components: lead.scoreComponents }
+    : { score: company.score, opportunity: company.opportunity, scoreReason: company.scoreReason, confidence: company.qualificationConfidence, components: company.scoreComponents };
   const events = activity.filter((event) => event.companyId === company.id);
 
   return <Sheet open={open} onOpenChange={setOpen} onOpenChangeComplete={(nextOpen) => { if (!nextOpen) onClose(); }}>
-    <SheetContent initialFocus={titleRef} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
+    <SheetContent initialFocus={titleRef} finalFocus={finalFocus} className="gap-0 overflow-y-auto bg-card sm:max-w-[580px]" style={{ width: "min(100vw, 580px)", maxWidth: "100vw" }}>
       <SheetHeader className="gap-0 border-b border-border px-6 pb-5 pt-7">
         <p className="section-label mb-5">Research / Company profile</p>
         <div className="flex items-center gap-3.5"><CompanyMark name={company.name} large /><div className="min-w-0"><SheetTitle ref={titleRef} tabIndex={-1} className="text-xl tracking-tight outline-none">{company.name}</SheetTitle><SheetDescription className="mt-1">{websiteHostname(company.website)}</SheetDescription></div></div>
@@ -35,13 +38,14 @@ export function CompanyDetails({ company, onClose }: { company: Company | null; 
           <dl className="grid grid-cols-2 gap-4 rounded-md bg-muted/40 p-4 text-xs"><div><dt className="text-muted-foreground">Industry</dt><dd className="mt-1.5">{company.industry}</dd></div><div><dt className="text-muted-foreground">Team size</dt><dd className="mt-1.5">{company.employeeEstimate}</dd></div><div><dt className="text-muted-foreground">Market</dt><dd className="mt-1.5">{company.location.split(", ").at(-1)}</dd></div><div><dt className="text-muted-foreground">Last researched</dt><dd className="mt-1.5">{company.lastResearchedAt ? entityDate.format(new Date(company.lastResearchedAt)) : "In progress"}</dd></div></dl>
         </EntitySection>
         <EntitySection title="Research assessment" icon={<ScanSearch className="size-4 text-muted-foreground" />}>
-          <div className="rounded-lg border border-border p-4"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">Opportunity fit</p><ScoreRail score={company.score} /></div><p className="mt-4 text-sm font-medium leading-5">{company.opportunity}</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{company.researchSummary}</p></div>
+          <div className="rounded-lg border border-border p-4"><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">Latest opportunity fit</p><ScoreRail score={assessment.score} /></div><p className="mt-4 text-sm font-medium leading-5">{assessment.opportunity}</p><p className="mt-2 text-xs leading-5 text-muted-foreground">{company.researchSummary}</p></div>
           <p className="text-[11px] leading-5 text-muted-foreground">This opportunity is a qualification hypothesis, not a verified customer requirement.</p>
-          <ScoreBreakdown components={company.scoreComponents} />
-          {company.scoreReason && <p className="text-xs leading-6 text-muted-foreground">{company.scoreReason}</p>}
-          {company.qualificationConfidence && <p className="text-[11px] capitalize text-muted-foreground">{company.qualificationConfidence} confidence</p>}
+          <ScoreBreakdown components={assessment.components} />
+          {assessment.scoreReason && <p className="text-xs leading-6 text-muted-foreground">{assessment.scoreReason}</p>}
+          {assessment.confidence && <p className="text-[11px] capitalize text-muted-foreground">{assessment.confidence} confidence</p>}
+          {lead && <p className="text-[11px] leading-5 text-muted-foreground">Latest assessment from {workflows.find((item) => item.id === lead.workflowId)?.title ?? "a research workflow"}. Earlier assessments remain in their lead records.</p>}
           {company.automationOpportunities?.map((opportunity) => <div key={opportunity.title} className="border-t border-border pt-3"><p className="text-xs font-medium">{opportunity.title}</p><p className="mt-1 text-xs leading-6 text-muted-foreground">{opportunity.explanation}</p><div className="mt-2 flex flex-wrap gap-3">{opportunity.evidence.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="text-[11px] text-muted-foreground underline underline-offset-4">Evidence {index + 1}</a>)}</div></div>)}
-          {lead && <Button variant="outline" className="self-start" nativeButton={false} render={<Link href={`/leads?lead=${encodeURIComponent(lead.id)}`} />}><Target data-icon="inline-start" />View lead assessment<ArrowRight data-icon="inline-end" /></Button>}
+          {lead && <Button variant="outline" className="self-start" nativeButton={false} render={<Link href={`/leads?lead=${encodeURIComponent(lead.id)}`} />}><Target data-icon="inline-start" />View latest lead assessment<ArrowRight data-icon="inline-end" /></Button>}
         </EntitySection>
         <EntitySection title="Source references" icon={<FileText className="size-4 text-muted-foreground" />}>
           <ResearchSources company={company} />

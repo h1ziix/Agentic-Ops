@@ -10,7 +10,7 @@ export class WorkflowRepository {
 
   async listWorkspaceWorkflows(workspaceId: string): Promise<WorkflowRow[]> {
     const { data, error } = await this.supabase.from("workflows").select("*")
-      .eq("workspace_id", workspaceId).order("updated_at", { ascending: false });
+      .eq("workspace_id", workspaceId).order("updated_at", { ascending: false }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_workspace_workflows", error);
     return parseDatabaseResult(z.array(workflowRowSchema), data, "list_workspace_workflows");
   }
@@ -52,7 +52,7 @@ export class WorkflowRepository {
   async listWorkflowTasks(workspaceId: string, workflowId?: string): Promise<WorkflowTaskRow[]> {
     let query = this.supabase.from("workflow_tasks").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);
-    const { data, error } = await query.order("position", { ascending: true });
+    const { data, error } = await query.order("position", { ascending: true }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_workflow_tasks", error);
     return parseDatabaseResult(z.array(workflowTaskRowSchema), data, "list_workflow_tasks");
   }

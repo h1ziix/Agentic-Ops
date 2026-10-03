@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowRight, ArrowUpRight, GitBranch } from "lucide-react";
 import { motion } from "motion/react";
 import { StatusBadge } from "@/components/app/status-badge";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowUpRight, Building2 } from "lucide-react";
 import type { Company } from "@/types/domain";
 import { EmptyState } from "@/components/app/empty-state";

@@ -2,6 +2,32 @@ import "server-only";
 import { z } from "zod";
 import { ResearchError, type ResearchProvider } from "./research-budget";
 
+const MAX_PROVIDER_BYTES = 1_048_576;
+
+/** Fixed providers are still untrusted. Stop oversized/chunked responses before buffering them. */
+async function boundedProviderJson(response: Response, provider: ResearchProvider): Promise<unknown> {
+  if (Number(response.headers.get("content-length")) > MAX_PROVIDER_BYTES || !response.body) {
+    await response.body?.cancel();
+    throw new ResearchError("ai_invalid_output", provider);
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > MAX_PROVIDER_BYTES) {
+        await reader.cancel();
+        throw new ResearchError("ai_invalid_output", provider);
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+}
+
 export async function providerJson(provider: ResearchProvider, url: string, init: RequestInit, timeoutMs: number): Promise<unknown> {
   try {
     const response = await fetch(url, { ...init, cache: "no-store", redirect: "error", signal: AbortSignal.timeout(timeoutMs) });
@@ -11,7 +37,10 @@ export async function providerJson(provider: ResearchProvider, url: string, init
       if (provider === "gemini" && response.status === 429) {
         const diagnostic = z.object({ error: z.object({ details: z.array(z.object({ retryDelay: z.string().optional(),
           violations: z.array(z.object({ quotaValue: z.string().optional() })).optional() })).optional() }) });
-        const detail = diagnostic.safeParse(await response.json().catch(() => null));
+        let diagnosticBody: unknown = null;
+        try { diagnosticBody = await boundedProviderJson(response, provider); }
+        catch (error) { if (!(error instanceof SyntaxError)) throw error; }
+        const detail = diagnostic.safeParse(diagnosticBody);
         if (detail.success) {
           if (detail.data.error.details?.some((item) => item.violations?.some((violation) => violation.quotaValue === "0"))) throw new ResearchError("ai_quota_exhausted", provider, false, 1000, response.status);
           const delay = detail.data.error.details?.find((item) => item.retryDelay)?.retryDelay;
@@ -23,10 +52,7 @@ export async function providerJson(provider: ResearchProvider, url: string, init
       throw new ResearchError("ai_unavailable", provider, response.status === 429 || response.status >= 500,
         Number.isFinite(retryMs) ? Math.max(1000, retryMs) : 1000, response.status);
     }
-    if (Number(response.headers.get("content-length")) > 1_048_576) throw new ResearchError("ai_invalid_output", provider);
-    const body = await response.text();
-    if (body.length > 1_048_576) throw new ResearchError("ai_invalid_output", provider);
-    return JSON.parse(body) as unknown;
+    return await boundedProviderJson(response, provider);
   } catch (error) {
     if (error instanceof ResearchError) throw error;
     if (error instanceof Error && ["TimeoutError", "AbortError"].includes(error.name)) throw new ResearchError("ai_timeout", provider, true);

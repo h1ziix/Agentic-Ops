@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { useState } from "react";
 import { Activity, ArrowRight, RotateCcw } from "lucide-react";
 import { EmptyState } from "@/components/app/empty-state";

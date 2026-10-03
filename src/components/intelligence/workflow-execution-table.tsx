@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import type { WorkflowIntelligence } from "@/types/intelligence";
 import { number, money } from "./format";
 

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { AlertCircle, Check, CircleDot, Globe2, ShieldCheck, Workflow } from "lucide-react";
 import type { AgentEvent } from "@/types/domain";
 import { formatDateTime } from "@/lib/format";

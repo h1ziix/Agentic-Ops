@@ -16,27 +16,46 @@ export class ExecutionRepository implements ExecutionStore {
     return data as unknown;
   }
   async list(workspace: string, workflow?: string) {
-    const read = async (table: string, columns = "*") => {
+    const read = async (table: string, timestamp: string, columns = "*") => {
       let query = this.db.from(table).select(columns).eq("workspace_id", workspace);
       if (workflow) query = query.eq("workflow_id", workflow);
-      const { data, error } = await query;
+      const { data, error } = await query.order(timestamp, { ascending: false }).order("id").limit(200);
       if (error) throw fromDatabaseError(`execution_${table}`, error);
       return data as unknown;
     };
-    const [snapshots, attempts, plans] = await Promise.all([read("action_approval_snapshots"), read("execution_attempts", ATTEMPT_COLUMNS), read("follow_up_plans")]);
+    const [snapshots, attempts, plans] = await Promise.all([read("action_approval_snapshots", "approved_at"), read("execution_attempts", "claimed_at", ATTEMPT_COLUMNS), read("follow_up_plans", "created_at")]);
     return { actionSnapshots: parseDatabaseResult(z.array(snapshotRowSchema), snapshots, "snapshots"), executionAttempts: parseDatabaseResult(z.array(attemptRowSchema), attempts, "attempts"),
       followUpPlans: parseDatabaseResult(z.array(followUpRowSchema), plans, "follow_ups") };
   }
+  async getSnapshot(workspace: string, workflow: string, id: string, actionId?: string) {
+    let query = this.db.from("action_approval_snapshots").select("*").eq("workspace_id", workspace).eq("workflow_id", workflow).eq("id", id);
+    if (actionId) query = query.eq("action_id", actionId);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw fromDatabaseError("execution_snapshot", error);
+    return data ? parseDatabaseResult(snapshotRowSchema, data, "execution_snapshot") : null;
+  }
+  async getAttempt(workspace: string, workflow: string, id: string) {
+    const { data, error } = await this.db.from("execution_attempts").select(ATTEMPT_COLUMNS)
+      .eq("workspace_id", workspace).eq("workflow_id", workflow).eq("id", id).maybeSingle();
+    if (error) throw fromDatabaseError("execution_attempt", error);
+    return data ? parseDatabaseResult(attemptRowSchema, data, "execution_attempt") : null;
+  }
   async load(request: ExecuteContext) {
-    const [a, w, data, connections] = await Promise.all([
+    // Execution rights never depend on a paged display history. Read the exact saved snapshot
+    // and this action's bounded attempts; SQL independently enforces claim and retry ceilings.
+    const [a, w, snapshot, history, connections] = await Promise.all([
       this.db.from("proposed_actions").select("*").eq("id", request.actionId).eq("workspace_id", request.workspaceId).eq("workflow_id", request.workflowId).maybeSingle(),
       this.db.from("workflows").select("*").eq("id", request.workflowId).eq("workspace_id", request.workspaceId).maybeSingle(),
-      this.list(request.workspaceId, request.workflowId), new IntegrationRepository(this.db).list(request.workspaceId),
+      this.getSnapshot(request.workspaceId, request.workflowId, request.expectedSnapshotId, request.actionId),
+      this.db.from("execution_attempts").select(ATTEMPT_COLUMNS).eq("workspace_id", request.workspaceId)
+        .eq("workflow_id", request.workflowId).eq("action_id", request.actionId).order("attempt_number", { ascending: false }).limit(3),
+      new IntegrationRepository(this.db).list(request.workspaceId),
     ]);
-    if (a.error || w.error) throw new AppError("database");
+    if (a.error || w.error || history.error) throw new AppError("database");
     if (!a.data || !w.data) throw new AppError("not_found");
-    const action = proposedActionRowSchema.parse(a.data); const snapshot = data.actionSnapshots.find((s) => s.id === request.expectedSnapshotId && s.action_id === action.id) ?? null;
-    return { action, snapshot, workflow: workflowRowSchema.parse(w.data), connection: connections.find((c) => c.id === snapshot?.connection_id) ?? null, attempts: data.executionAttempts };
+    const action = proposedActionRowSchema.parse(a.data);
+    return { action, snapshot, workflow: workflowRowSchema.parse(w.data), connection: connections.find((c) => c.id === snapshot?.connection_id) ?? null,
+      attempts: parseDatabaseResult(z.array(attemptRowSchema), history.data, "execution_action_attempts") };
   }
   async claim(request: ExecuteContext, attemptId: string, claimToken: string) {
     return attemptRowSchema.parse(await this.rpc("claim_execution", { p_workspace: request.workspaceId, p_actor: request.userId, p_workflow: request.workflowId,

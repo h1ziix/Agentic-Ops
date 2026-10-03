@@ -47,7 +47,7 @@ export async function authenticate(_state: AuthActionState, formData: FormData):
     }
   }
 
-  redirect("/dashboard");
+  redirect(mode === "sign-up" ? "/onboarding" : "/dashboard");
 }
 
 export async function signOut() {

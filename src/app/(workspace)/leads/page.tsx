@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs } from "@base-ui/react/tabs";
 import { ArrowDownWideNarrow, Download, Search, SlidersHorizontal, Target, X } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
@@ -16,6 +16,7 @@ import { exportLeadCsv, outreachLabel, useProspectData } from "@/components/enti
 import { normalizeOpportunity } from "@/lib/intelligence-normalization";
 import { leadFilterKeys, leadIndustry, leadMatchesFilters, prospectUrl, readLeadFilters, type LeadFilters } from "@/lib/prospect-filters";
 import { cn } from "@/lib/utils";
+import { workspaceHref } from "@/lib/workspace-path";
 import type { OutreachStatus } from "@/types/domain";
 
 export default function LeadsPage() {
@@ -24,7 +25,12 @@ export default function LeadsPage() {
 
 function LeadsContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchRef = useRef<HTMLInputElement>(null);
+  const drawerLauncher = useRef<HTMLElement | null>(null);
+  const resultParams = new URLSearchParams(searchParams.toString());
+  resultParams.delete("lead");
   const { leads, workflows, companies, companyById } = useProspectData();
   const filters = readLeadFilters(searchParams);
   const { query, view, status, sort } = filters;
@@ -44,8 +50,14 @@ function LeadsContent() {
   const icps = [...new Map(workflows.filter((workflow) => workflow.icpId).map((workflow) => [workflow.icpId!, workflow.icpName ?? "Saved ICP"])).entries()];
   const selectedLeads = leads.filter((lead) => selection.has(lead.id));
   const filtersActive = query !== "" || status !== "all" || view !== "all" || advancedCount > 0;
-  const updateFilter = (key: string, value: string) => window.history.replaceState(null, "", prospectUrl("/leads", window.location.search, { [key]: value }));
-  const clearFilters = () => window.history.replaceState(null, "", prospectUrl("/leads", window.location.search, Object.fromEntries(leadFilterKeys.map((key) => [key, null]))));
+  const leadUrl = (search: string, updates: Record<string, string | null>) => workspaceHref(prospectUrl("/leads", search, updates), pathname);
+  const openLead = (id: string) => {
+    drawerLauncher.current = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
+    router.push(leadUrl(searchParams.toString(), { lead: id }), { scroll: false });
+  };
+  const restoreDrawerFocus = () => drawerLauncher.current?.isConnected ? drawerLauncher.current : searchRef.current;
+  const updateFilter = (key: string, value: string) => window.history.replaceState(null, "", leadUrl(window.location.search, { [key]: value }));
+  const clearFilters = () => window.history.replaceState(null, "", leadUrl(window.location.search, Object.fromEntries(leadFilterKeys.map((key) => [key, null]))));
   const toggleLead = (id: string) => setSelection((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const toggleVisible = () => setSelection((current) => { const next = new Set(current); const all = filtered.every((lead) => current.has(lead.id)); filtered.forEach((lead) => { if (all) next.delete(lead.id); else next.add(lead.id); }); return next; });
   const exportLeads = () => { const records = selectedLeads.length ? selectedLeads : filtered; exportLeadCsv(records, companies); setExportStatus(`Exported ${records.length} ${records.length === 1 ? "lead" : "leads"} as CSV.`); };
@@ -59,7 +71,7 @@ function LeadsContent() {
         {views.map((item) => <Tabs.Tab key={item.value} id={`leads-tab-${item.value}`} value={item.value} className="interactive-tab relative flex shrink-0 items-center gap-2 border-b-2 border-transparent pb-3 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-active:border-foreground data-active:font-medium data-active:text-foreground">{item.label}<span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] tabular-nums">{item.count}</span></Tabs.Tab>)}
       </Tabs.List>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input id="lead-search" type="search" aria-label="Search leads" placeholder="Search companies or opportunities…" value={query} onChange={(event) => updateFilter("q", event.target.value)} className="h-9 pl-9" /></div>
+        <div className="relative min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" /><Input ref={searchRef} id="lead-search" type="search" aria-label="Search leads" placeholder="Search companies or opportunities…" value={query} onChange={(event) => updateFilter("q", event.target.value)} className="h-9 pl-9" /></div>
         <select id="lead-status-filter" aria-label="Filter by lead status" value={status} onChange={(event) => updateFilter("stage", event.target.value)} className={entitySelectClass}><option value="all">All stages</option><option value="new">New</option><option value="qualified">Qualified</option><option value="outreach_ready">Outreach ready</option><option value="waiting_approval">Waiting approval</option><option value="contacted">Contacted</option><option value="responded">Responded</option><option value="converted">Converted</option><option value="rejected">Rejected</option></select>
         <div className="relative"><ArrowDownWideNarrow aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" /><select id="lead-sort" aria-label="Sort leads" value={sort} onChange={(event) => updateFilter("sort", event.target.value)} className={cn(entitySelectClass, "pl-8")}><option value="score">Highest score</option><option value="updated">Recently updated</option><option value="company">Company A–Z</option></select></div>
         <Button variant="outline" size="sm" aria-expanded={filtersOpen} aria-controls="lead-advanced-filters" onClick={() => setFiltersOpen((value) => !value)}><SlidersHorizontal data-icon="inline-start" />Filters{advancedCount > 0 ? ` · ${advancedCount}` : ""}</Button>
@@ -70,14 +82,14 @@ function LeadsContent() {
       {selectedLeads.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/60 px-3 py-2 text-xs"><span className="font-medium">{selectedLeads.length} selected</span><Button variant="ghost" size="sm" onClick={exportLeads}><Download data-icon="inline-start" />Export selected</Button><Button variant="ghost" size="sm" onClick={() => setSelection(new Set())}>Clear selection</Button></div>}
       {exportStatus && <p role="status" className="text-xs text-[var(--success-fg)]">{exportStatus}</p>}
       <Tabs.Panel id={`leads-panel-${view}`} value={view} className="min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <EntityResults resultKey={searchParams.toString()}>
+        <EntityResults resultKey={resultParams.toString()}>
           <div className="overflow-hidden rounded-lg border border-border bg-card">
-            {filtered.length ? <><LeadRecords leads={filtered} workflows={workflows} companies={companies} selection={selection} onOpen={(id) => router.push(prospectUrl("/leads", searchParams.toString(), { lead: id }), { scroll: false })} onSelect={toggleLead} onSelectAll={toggleVisible} /><div className="flex items-center justify-between gap-3 border-t border-border bg-muted/15 px-4 py-3 text-[11px] text-muted-foreground"><span aria-live="polite">{filtered.length} of {leads.length} opportunities</span><span>Workspace records</span></div></> : <EmptyState icon={Target} title={filtersActive ? "No leads in this view" : "Your next opportunity starts here"} description={filtersActive ? "Try a different search or reset the filters to see all leads." : "Start a research workflow to discover and qualify companies."} action={filtersActive ? <Button variant="outline" size="sm" onClick={clearFilters}>Reset filters</Button> : <Button variant="outline" nativeButton={false} render={<Link href="/workflows" />}>View workflows</Button>} />}
+            {filtered.length ? <><LeadRecords leads={filtered} workflows={workflows} companies={companies} selection={selection} onOpen={openLead} onSelect={toggleLead} onSelectAll={toggleVisible} /><div className="flex items-center justify-between gap-3 border-t border-border bg-muted/15 px-4 py-3 text-[11px] text-muted-foreground"><span aria-live="polite">{filtered.length} of {leads.length} opportunities</span><span>Workspace records</span></div></> : <EmptyState icon={Target} title={filtersActive ? "No leads in this view" : "Your next opportunity starts here"} description={filtersActive ? "Try a different search or reset the filters to see all leads." : "Start a research workflow to discover and qualify companies."} action={filtersActive ? <Button variant="outline" size="sm" onClick={clearFilters}>Reset filters</Button> : <Button variant="outline" nativeButton={false} render={<Link href="/workflows" />}>View workflows</Button>} />}
           </div>
         </EntityResults>
       </Tabs.Panel>
     </Tabs.Root>
-    <LeadDetails key={selectedLead?.id ?? "closed"} lead={selectedLead} onClose={() => router.replace(prospectUrl("/leads", searchParams.toString(), { lead: null }), { scroll: false })} />
+    <LeadDetails key={selectedLead?.id ?? "closed"} lead={selectedLead} finalFocus={restoreDrawerFocus} onClose={() => router.replace(leadUrl(searchParams.toString(), { lead: null }), { scroll: false })} />
   </div>;
 }
 

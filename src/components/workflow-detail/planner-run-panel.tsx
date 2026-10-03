@@ -19,7 +19,7 @@ export function PlannerRunPanel({ run, status }: { run?: PlannerRun; status: Wor
       : <p className="mt-3 text-xs leading-6 text-muted-foreground">{run?.error ?? "Planning did not complete."}</p>}
     {run && <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-border pt-3 font-mono text-[10px] text-muted-foreground">
       <div className="flex gap-1.5"><dt className="font-sans">Model</dt><dd>{run.model ?? "Not recorded"}</dd></div>
-      <div className="flex gap-1.5"><dt className="font-sans">Duration</dt><dd>{run.durationMs === null ? "In progress" : `${(run.durationMs / 1000).toFixed(1)}s`}</dd></div>
+      <div className="flex gap-1.5"><dt className="font-sans">Duration</dt><dd>{run.durationMs === null ? active ? "In progress" : "Unknown" : `${(run.durationMs / 1000).toFixed(1)}s`}</dd></div>
       <div className="flex gap-1.5"><dt className="font-sans">Retries</dt><dd>{run.retryCount}</dd></div>
       {run.totalTokens !== null && <div className="flex gap-1.5"><dt className="font-sans">Tokens</dt><dd>{run.totalTokens.toLocaleString("en-US")}</dd></div>}
     </dl>}

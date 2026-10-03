@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowUpRight, CircleAlert } from "lucide-react";
 import { useDemoStore } from "@/components/app/demo-store";
 import { cn } from "@/lib/utils";

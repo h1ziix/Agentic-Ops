@@ -4,6 +4,7 @@ import { GeminiProvider } from "./gemini-provider";
 import { TavilyProvider } from "./tavily-provider";
 import { ResearchBudget, ResearchError } from "./research-budget";
 import { researchInput, researchSources, researchAnalysis } from "./testing/research-fixtures";
+import { providerJson } from "./provider-http";
 
 test("Gemini uses a fixed server endpoint, JSON Schema and supplied Tavily evidence without browsing tools", async (t) => {
   t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
@@ -20,6 +21,34 @@ test("Gemini uses a fixed server endpoint, JSON Schema and supplied Tavily evide
   try { const result = await new GeminiProvider().analyze(researchInput, researchSources, "gemini-3.8-flash", 10_000);
     assert.deepEqual(result.output, researchAnalysis); assert.equal(result.usage?.totalTokens, 60);
   } finally { if (old === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = old; }
+});
+
+test("Chunked provider success and quota responses stop at the byte ceiling and cancel the stream", async (t) => {
+  for (const status of [200, 429]) {
+    let cancelled = false;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        // UTF-8 bytes exceed the limit although this contains fewer than 1 Mi characters.
+        controller.enqueue(new TextEncoder().encode("я".repeat(524_289)));
+      },
+      cancel() { cancelled = true; },
+    });
+    const transport = t.mock.method(globalThis, "fetch", async () => new Response(stream, { status }));
+    await assert.rejects(providerJson("gemini", "https://generativelanguage.googleapis.com/mock", {}, 1000),
+      (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output");
+    assert.equal(cancelled, true);
+    transport.mock.restore();
+  }
+});
+
+test("Malformed successful provider JSON is classified safely while malformed quota diagnostics keep retry handling", async (t) => {
+  const transport = t.mock.method(globalThis, "fetch", async () => new Response("raw-token-sensitive-payload"));
+  await assert.rejects(providerJson("tavily", "https://api.tavily.com/search", {}, 1000),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output" && !error.message.includes("raw-token"));
+  transport.mock.restore();
+  t.mock.method(globalThis, "fetch", async () => new Response("malformed", { status: 429, headers: { "retry-after": "3" } }));
+  await assert.rejects(providerJson("gemini", "https://generativelanguage.googleapis.com/mock", {}, 1000),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_unavailable" && error.retryAfterMs === 3000);
 });
 
 test("Tavily is domain-scoped and uses explicit basic search with automatic upgrades disabled", async (t) => {

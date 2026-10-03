@@ -73,15 +73,16 @@ export async function getWorkflowDetailSnapshot(workflowId: string, context?: Wo
     workflowRepository.listWorkflowTasks(workspace.id, workflow.id),
     new CompanyRepository(supabase).listWorkspaceCompanies(workspace.id, workflow.id),
     new LeadRepository(supabase).listWorkspaceLeads(workspace.id, workflow.id),
-    new AgentRunRepository(supabase).listWorkspaceRuns(workspace.id, workflow.id),
-    new AgentEventRepository(supabase).listWorkspaceEvents(workspace.id, workflow.id),
+    new AgentRunRepository(supabase).listWorkspaceRuns(workspace.id, workflow.id, { offset: 0, limit: 201 }),
+    new AgentEventRepository(supabase).listWorkspaceEvents(workspace.id, workflow.id, { offset: 0, limit: 301 }),
     new ApprovalRepository(supabase).listWorkspaceApprovals(workspace.id, workflow.id),
     new ApprovalRepository(supabase).listWorkspaceProposedActions(workspace.id, workflow.id),
     new LeadRepository(supabase).listDetectedReplyLeadIds(workspace.id, workflow.id),
   ]);
 
   const [execution, integrationConnections] = await Promise.all([new ExecutionRepository(supabase).list(workspace.id, workflow.id), new IntegrationRepository(supabase).list(workspace.id)]);
-  return { workflow, tasks, companies, leads, agentRuns, events, approvals, proposedActions, repliedLeadIds, ...execution, integrationConnections };
+  return { workflow, tasks, companies, leads, agentRuns: agentRuns.slice(0, 200), events: events.slice(0, 300), approvals, proposedActions, repliedLeadIds, ...execution, integrationConnections,
+    historyWindows: { agentRuns: { offset: 0, limit: 200, hasMore: agentRuns.length > 200 }, events: { offset: 0, limit: 300, hasMore: events.length > 300 }, execution: { limit: 200 } } };
 }
 
 export async function transitionWorkflow(workflowId: string, nextStatus: unknown, summary?: string): Promise<WorkflowRow> {

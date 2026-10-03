@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { usePathname } from "next/navigation";
 import { useId, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
@@ -14,6 +14,7 @@ import { CommandMenu } from "@/components/app/command-menu";
 import { MotionProvider, PageTransition, SignalDot } from "@/components/app/motion-system";
 import { cn } from "@/lib/utils";
 import { useDemoStore } from "@/components/app/demo-store";
+import { workspacePathname } from "@/lib/workspace-path";
 
 const navigation = [
   { label: "Overview", href: "/dashboard", icon: LayoutGrid, group: "Workspace" },
@@ -29,7 +30,7 @@ const navigation = [
 ] as const;
 
 function SidebarContent({ onNavigate, onSearch }: { onNavigate?: () => void; onSearch: () => void }) {
-  const pathname = usePathname();
+  const pathname = workspacePathname(usePathname());
   const layoutId = useId();
   const { workflows, approvals, workspace, mode } = useDemoStore();
   const pending = approvals.filter((approval) => approval.status === "pending").length;
@@ -73,11 +74,12 @@ function SidebarContent({ onNavigate, onSearch }: { onNavigate?: () => void; onS
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { storageAvailable, workspace, mode } = useDemoStore();
+  const { storageAvailable, workspace, mode, resetDemo } = useDemoStore();
+  const [demoReset, setDemoReset] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const pathname = usePathname();
-  const current = navigation.find(({ href }) => pathname === href || pathname.startsWith(href + "/"))?.label ?? "Settings";
+  const pathname = workspacePathname(usePathname());
+  const current = navigation.find(({ href }) => pathname === href || pathname.startsWith(href + "/"))?.label ?? (pathname === "/onboarding" ? "Getting started" : "Settings");
   const openSearch = () => { setMobileOpen(false); setSearchOpen(true); };
   return <MotionProvider><div className="min-h-screen bg-background">
     <a href="#main-content" className="skip-link">Skip to content</a>
@@ -87,8 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="workspace-canvas min-h-screen lg:pl-[232px]">
       <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 shadow-sm sm:px-6 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground"><Button size="icon-sm" variant="ghost" className="-ml-1 lg:hidden" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu /></Button><span className="hidden font-mono text-[10px] uppercase tracking-[0.12em] sm:inline">Workspace</span><ChevronRight className="hidden size-3 text-[var(--icon-muted)] sm:inline" /><Link href={pathname.startsWith("/workflows/") ? "/workflows" : pathname} className="interactive-link truncate font-semibold text-foreground">{current}</Link>{pathname.startsWith("/workflows/") && <><ChevronRight className="size-3" /><span className="truncate">Execution detail</span></>}</div>
-        <div className="flex items-center gap-2 sm:gap-3"><span className="hidden items-center gap-1.5 rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-[var(--brand-accent)]" />{mode === "live" ? "Release 0.8" : "Demo preview"}</span><div className="mx-1 hidden h-4 border-l border-border sm:block" /><Button size="icon-sm" variant="ghost" aria-label="Search workspace" onClick={openSearch}><Search /></Button><ThemeSelector /><Link href="/settings" aria-label={`${workspace.name} settings`} className="header-avatar flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-[9px] font-semibold">{workspace.initials}</Link></div>
+        <div className="flex items-center gap-2 sm:gap-3"><span className="hidden items-center gap-1.5 rounded border border-border bg-muted/50 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-[var(--brand-accent)]" />{mode === "live" ? "Release 0.9" : "Demo preview"}</span><div className="mx-1 hidden h-4 border-l border-border sm:block" /><Button size="icon-sm" variant="ghost" aria-label="Search workspace" onClick={openSearch}><Search /></Button><ThemeSelector /><Link href="/settings" aria-label={`${workspace.name} settings`} className="header-avatar flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-[9px] font-semibold">{workspace.initials}</Link></div>
       </header>
+      {mode === "demo" && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-2.5 text-[11px] text-[var(--warning-fg)] sm:px-6 lg:px-8"><span><strong>DEMO / SAMPLE</strong> · Fictional records. No AI calls, emails or CRM writes.</span><div className="flex items-center gap-3"><Link href="/demo/workflows/kazakhstan-fintech" className="underline underline-offset-4">Showcase workflow</Link><button type="button" onClick={() => { resetDemo(); setDemoReset(true); }} className="rounded px-1 underline underline-offset-4">Reset demo</button><Link href="/sign-in" className="underline underline-offset-4">Open workspace</Link></div>{demoReset && <span role="status" className="w-full">Demo decisions and local drafts reset.</span>}</div>}
       {!storageAvailable && <p role="status" className="border-b border-[var(--warning-border)] bg-[var(--warning-bg)] px-4 py-2 text-xs text-[var(--warning-fg)] sm:px-6 lg:px-8">Browser storage is unavailable. Changes will last only for this visit.</p>}
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1536px] px-4 py-8 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring sm:px-6 lg:px-8 lg:py-9"><PageTransition key={pathname}>{children}</PageTransition></main>
       <footer className="mx-4 mb-5 flex items-center justify-between gap-4 border-t border-border pt-3 text-[10px] text-muted-foreground sm:mx-6 lg:mx-8"><span className="flex items-center gap-1.5"><Command className="size-3" />Agentic Ops <span className="text-border">/</span> {mode === "live" ? workspace.name : "Workspace preview"}</span><span className="hidden sm:block">Human judgment. Agent momentum.</span></footer>

@@ -15,13 +15,15 @@ import { newWorkflowSchema } from "@/lib/validation/workflow";
 import { listStrategyAction } from "@/app/actions/strategy";
 import { workflowDefaults } from "@/lib/workflow-defaults";
 import type { StrategyLibrary } from "@/types/strategy";
+import { usePathname } from "next/navigation";
+import { workspaceHref } from "@/lib/workspace-path";
 
 const exampleGoal = "Find 10 SaaS or fintech companies in Kazakhstan that could benefit from AI automation. Research them and qualify the best leads. Do not generate or send outreach yet.";
 
-export function NewWorkflowButton({ compact = false, label, variant, initialIcpId, initialTemplateId, library: suppliedLibrary }: { compact?: boolean; label?: string; variant?: "outline"; initialIcpId?: string; initialTemplateId?: string; library?: StrategyLibrary }) {
+export function NewWorkflowButton({ compact = false, label, variant, initialIcpId, initialTemplateId, initialGoal = "", initialTarget = 20, library: suppliedLibrary }: { compact?: boolean; label?: string; variant?: "outline"; initialIcpId?: string; initialTemplateId?: string; initialGoal?: string; initialTarget?: number; library?: StrategyLibrary }) {
   const [open, setOpen] = useState(false);
-  const [goal, setGoal] = useState("");
-  const [targetCompanies, setTargetCompanies] = useState("20");
+  const [goal, setGoal] = useState(initialGoal);
+  const [targetCompanies, setTargetCompanies] = useState(String(initialTarget));
   const [error, setError] = useState("");
   const [invalidField, setInvalidField] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -30,10 +32,11 @@ export function NewWorkflowButton({ compact = false, label, variant, initialIcpI
   const [strategyError, setStrategyError] = useState("");
   const [icpId, setIcpId] = useState(initialIcpId ?? "");
   const [templateId, setTemplateId] = useState(initialTemplateId ?? "");
-  const goalEdited = useRef(false); const targetEdited = useRef(false);
+  const goalEdited = useRef(Boolean(initialGoal)); const targetEdited = useRef(initialTarget !== 20);
   const icpEdited = useRef(Boolean(initialIcpId)); const strategyRequest = useRef(0);
   const { createWorkflow, hydrated, mode } = useDemoStore();
   const router = useRouter();
+  const pathname = usePathname();
   const reduced = useReducedMotion();
   const formId = useId();
   const goalId = `${formId}-goal`;
@@ -84,7 +87,7 @@ export function NewWorkflowButton({ compact = false, label, variant, initialIcpI
       const id = await createWorkflow(parsed.data);
       setError(""); setInvalidField(null); setGoal(""); setTargetCompanies("20"); setIcpId(initialIcpId ?? ""); setTemplateId(initialTemplateId ?? ""); setOpen(false);
       goalEdited.current = false; targetEdited.current = false; icpEdited.current = Boolean(initialIcpId);
-      router.push(`/workflows/${id}`);
+      router.push(workspaceHref(`/workflows/${id}`, pathname));
     } catch (error) { setError(error instanceof Error ? error.message : "The workflow could not be created. Please try again."); }
     finally { setCreating(false); }
   }
@@ -119,7 +122,7 @@ export function NewWorkflowButton({ compact = false, label, variant, initialIcpI
               <Field.Root invalid={invalidField === "targetCompanies"} className="flex w-36 flex-col gap-2"><Field.Label htmlFor={targetId} className="text-xs font-semibold">Target companies</Field.Label><Input id={targetId} type="number" min={1} max={20} value={targetCompanies} disabled={creating} onChange={(event) => { targetEdited.current = true; setTargetCompanies(event.target.value); setError(""); setInvalidField(null); }} aria-invalid={invalidField === "targetCompanies"} aria-describedby={`${formId}-target-help`} /><Field.Description id={`${formId}-target-help`} className="text-[11px] text-muted-foreground">Between 1 and 20</Field.Description></Field.Root>
               <div className="flex min-w-0 flex-1 flex-col gap-2 pb-1"><span className="section-label">Your workflow</span><div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><span>Plan</span><ArrowRight className="size-3" /><span>Research</span><ArrowRight className="size-3" /><span>Score</span><ArrowRight className="size-3" /><span>Review</span></div><span className="text-[11px] text-muted-foreground">One goal, an auditable sequence of tasks.</span></div>
             </div>
-            <div className="flex items-start gap-3 rounded-md border border-border bg-[var(--surface-quiet)] p-3.5"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--warning-fg)]" /><div><p className="text-xs font-medium">You stay in control</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{mode === "live" ? "Agents research evidence and prepare drafts. Confirm the recipient and account, approve the exact revision, then Execute explicitly." : "This preview creates a local plan. Research and sending are unavailable."} Authorization is separate from execution.</p></div></div>
+            <div className="flex items-start gap-3 rounded-md border border-border bg-[var(--surface-quiet)] p-3.5"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--warning-fg)]" /><div><p className="text-xs font-medium">You stay in control</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{mode === "live" ? "Agents research evidence and prepare drafts. Confirm the recipient and account, approve the exact revision, then Execute explicitly." : "This demo saves a local draft. No AI, research providers or external actions run."} Authorization is separate from execution.</p></div></div>
             <AnimatePresence>{error && <motion.p id={`${formId}-error`} role="alert" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : 0.15 }} className="text-xs text-destructive">{error}</motion.p>}</AnimatePresence>
           </div>
           <DialogFooter className="m-0 items-stretch rounded-b-lg px-6 py-4 sm:items-center"><span className="mr-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex"><Check className="size-3 text-[var(--success-fg)]" /> {mode === "live" ? "Saved to workspace" : "Local preview"}</span><Button type="button" variant="outline" onClick={closeDialog} disabled={creating}>Cancel</Button><Button type="submit" disabled={creating || loadingStrategy || missingTemplateProfile || !hydrated}>{creating ? "Creating..." : "Create workflow"}<ArrowRight data-icon="inline-end" /></Button></DialogFooter>

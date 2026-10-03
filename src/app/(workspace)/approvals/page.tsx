@@ -25,7 +25,8 @@ function describeActions(actions: ProposedAction[]) {
 }
 
 export default function ApprovalsPage() {
-  return <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>}><ApprovalInbox /></Suspense>;
+  const { demoResetVersion } = useDemoStore();
+  return <Suspense fallback={<div className="flex flex-col gap-6"><Skeleton className="h-24" /><Skeleton className="h-96" /></div>}><ApprovalInbox key={demoResetVersion} /></Suspense>;
 }
 
 function ApprovalInbox() {

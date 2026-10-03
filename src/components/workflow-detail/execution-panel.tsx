@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { useState } from "react";
 import { useDemoStore } from "@/components/app/demo-store";
 import { Button } from "@/components/ui/button";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { workflowIntelligenceSchema, type WorkflowIntelligence } from "@/types/intelligence";
 import type { Workflow } from "@/types/domain";
 import { number, money } from "./format";

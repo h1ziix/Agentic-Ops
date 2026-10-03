@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { CalendarClock, MailCheck } from "lucide-react";
 import { useDemoStore } from "@/components/app/demo-store";
 import { StatusBadge } from "@/components/app/status-badge";

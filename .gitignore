@@ -16,3 +16,5 @@ output/release-08-analytics/
 output/*.log
 supabase/.temp/
 supabase/.branches/
+output/*audit.json
+output/release-09-*.json

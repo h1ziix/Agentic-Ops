@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { useDemoStore } from "@/components/app/demo-store";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/app/status-badge";

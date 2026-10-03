@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "motion/react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";

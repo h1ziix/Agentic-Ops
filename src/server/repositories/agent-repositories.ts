@@ -7,14 +7,18 @@ import { parseDatabaseResult } from "./parse";
 import type { AgentRunWriter, StartRunInput, CompleteRunInput } from "../services/agent-run-service";
 import type { EventWriter, RecordEventInput } from "../services/event-service";
 import { mapPlannerTasks, validatedPlannerOutputSchema } from "@/lib/validation/planner";
+import { readWindowRange, type ReadWindow } from "./read-window";
 
 export class AgentRunRepository implements AgentRunWriter {
   constructor(private readonly supabase: ServerSupabase) {}
 
-  async listWorkspaceRuns(workspaceId: string, workflowId?: string): Promise<AgentRunRow[]> {
+  async listWorkspaceRuns(workspaceId: string, workflowId?: string, window?: ReadWindow): Promise<AgentRunRow[]> {
     let query = this.supabase.from("agent_runs").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    query = query.order("created_at", { ascending: false }).order("id");
+    if (window) query = query.range(...readWindowRange(window));
+    else query = query.limit(1000);
+    const { data, error } = await query;
     if (error) throw fromDatabaseError("list_agent_runs", error);
     return parseDatabaseResult(z.array(agentRunRowSchema), data, "list_agent_runs");
   }
@@ -44,10 +48,13 @@ export class AgentRunRepository implements AgentRunWriter {
 export class AgentEventRepository implements EventWriter {
   constructor(private readonly supabase: ServerSupabase) {}
 
-  async listWorkspaceEvents(workspaceId: string, workflowId?: string): Promise<AgentEventRow[]> {
+  async listWorkspaceEvents(workspaceId: string, workflowId?: string, window?: ReadWindow): Promise<AgentEventRow[]> {
     let query = this.supabase.from("agent_events").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    query = query.order("created_at", { ascending: false }).order("id");
+    if (window) query = query.range(...readWindowRange(window));
+    else query = query.limit(1000);
+    const { data, error } = await query;
     if (error) throw fromDatabaseError("list_agent_events", error);
     return parseDatabaseResult(z.array(agentEventRowSchema), data, "list_agent_events");
   }

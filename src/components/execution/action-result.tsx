@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useId, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProposedAction } from "@/types/domain";

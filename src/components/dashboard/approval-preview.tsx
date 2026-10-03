@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowRight, Check, Mail, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Approval } from "@/types/domain";

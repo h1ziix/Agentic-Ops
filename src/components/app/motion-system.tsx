@@ -9,7 +9,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 }
 export function PageTransition({ children }: { children: ReactNode }) {
   const reduced = useReducedMotion();
-  return <motion.div initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0 : 0.28, ease: [0.2, 0.8, 0.2, 1] }}>{children}</motion.div>;
+  return <motion.div initial={reduced ? false : { opacity: 0, transform: "translateY(6px)" }} animate={{ opacity: 1, transform: "translateY(0)" }} transition={{ duration: reduced ? 0 : 0.2, ease: [0.2, 0.8, 0.2, 1] }}>{children}</motion.div>;
 }
 export function SignalDot({ active = false, className }: { active?: boolean; className?: string }) {
   const reduced = useReducedMotion();

@@ -310,6 +310,7 @@ export function toWorkspaceView(snapshot: WorkspaceSnapshot): WorkspaceViewData 
 
   const initials = snapshot.workspace.name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "AO";
   return {
+    historyWindows: snapshot.historyWindows,
     integrationConnections: snapshot.integrationConnections ?? [],
     followUpPlans: snapshot.followUpPlans ?? [],
     workspace: { id: snapshot.workspace.id, name: snapshot.workspace.name, initials, plan: "Workspace", mode: "live" },

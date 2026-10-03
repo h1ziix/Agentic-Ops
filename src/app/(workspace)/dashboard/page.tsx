@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { Activity, ArrowRight, ArrowUpRight, ShieldCheck } from "lucide-react";
 import { NewWorkflowButton } from "@/components/app/new-workflow-button";
 import { ActivityFeed } from "@/components/app/activity-feed";
@@ -12,6 +12,7 @@ import { PriorityWorkflows } from "@/components/dashboard/priority-workflows";
 import { ApprovalPreview } from "@/components/dashboard/approval-preview";
 import { ExecutionSnapshot } from "@/components/dashboard/execution-snapshot";
 import { OperationsOverview } from "@/components/automation/operations-overview";
+import { OnboardingPanel } from "@/components/app/onboarding-panel";
 
 export default function DashboardPage() {
   const { workflows, workflowStages, approvals, activity, mode } = useDemoStore();
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const pending = approvals.filter((approval) => approval.status === "pending");
   const pendingCount = pending.reduce((sum, approval) => sum + approval.recipientCount, 0);
   const focus = active.find((workflow) => ["planning", "running"].includes(workflow.status)) ?? active[0];
+  if (mode === "live" && workflows.length === 0) return <OnboardingPanel />;
 
   return (
     <div className="flex flex-col gap-7 lg:gap-8">

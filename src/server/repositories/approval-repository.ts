@@ -9,6 +9,13 @@ import type { executableEmailEditSchema, revisionSelectionSchema } from "@/lib/v
 
 export class ApprovalRepository {
   constructor(private readonly supabase: ServerSupabase) {}
+  /** Mutation sources must remain addressable beyond the workspace list window. */
+  async getProposedActionById(workspaceId: string, actionId: string): Promise<ProposedActionRow | null> {
+    const { data, error } = await this.supabase.from("proposed_actions").select("*")
+      .eq("workspace_id", workspaceId).eq("id", actionId).maybeSingle();
+    if (error) throw fromDatabaseError("get_proposed_action", error);
+    return data ? parseDatabaseResult(proposedActionRowSchema, data, "get_proposed_action") : null;
+  }
   async saveExecutableEmail(edit: z.infer<typeof executableEmailEditSchema>) {
     const { data, error } = await this.supabase.rpc("save_executable_email", { p_action_id: edit.actionId, p_revision: edit.revision,
       p_email: edit.email, p_name: edit.name, p_role: edit.role, p_connection: edit.connectionId, p_subject: edit.subject, p_body: edit.body });
@@ -24,7 +31,7 @@ export class ApprovalRepository {
   async listWorkspaceApprovals(workspaceId: string, workflowId?: string): Promise<ApprovalRow[]> {
     let query = this.supabase.from("approvals").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query.order("created_at", { ascending: false }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_approvals", error);
     return parseDatabaseResult(z.array(approvalRowSchema), data, "list_approvals");
   }
@@ -32,7 +39,7 @@ export class ApprovalRepository {
   async listWorkspaceProposedActions(workspaceId: string, workflowId?: string): Promise<ProposedActionRow[]> {
     let query = this.supabase.from("proposed_actions").select("*").eq("workspace_id", workspaceId);
     if (workflowId) query = query.eq("workflow_id", workflowId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data, error } = await query.order("created_at", { ascending: false }).order("id").limit(1000);
     if (error) throw fromDatabaseError("list_proposed_actions", error);
     return parseDatabaseResult(z.array(proposedActionRowSchema), data, "list_proposed_actions");
   }

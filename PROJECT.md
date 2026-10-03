@@ -2,11 +2,15 @@
 
 ## Current release boundary
 
-The stages below are historical planning. Release 0.8 extends the existing execution and automation layers with Product Intelligence, saved Ideal Customer Profiles and Workflow Templates. The operational dark/light SaaS design, Orchestrator, AgentRuntime, deterministic Executor and existing repositories remain authoritative.
+The stages below are historical planning. Release 0.9 is Portfolio / Production Polish, starting from checkpoint `f1cf331` (combined Releases 0.7–0.8). It refines the existing operational dark/light interface, first-run onboarding, isolated public demo, accessibility, resilience, documentation and deployment preparation. Orchestrator, AgentRuntime, deterministic Executor, checked repositories and the existing state/approval system remain authoritative.
 
 Intelligence uses real persisted records, workspace-safe aggregation, documented company-workflow cohort semantics and nullable usage/cost. Templates guide the Planner; explicit goals remain authoritative. Workflow strategy and lead research/qualification snapshots preserve history after source edits. Analytics do not automatically change prompts, scores, models or approval policy.
 
-Approve and Execute remain separate; follow-up timers create fresh proposals. Existing Release 0.7 live worker/reply verification gaps remain open until exercised. Missing Trigger configuration, verified model pricing or mailbox-read consent must remain visible as unavailable. Calendar, billing, major redesign, Release 0.9 portfolio work and deployment are outside this release. Implementation and mocked checks do not certify live acceptance.
+The public `/demo` contains one versioned fictional showcase with reserved `.example` contacts, local-only decisions/drafts and clearly labelled historical simulation. It has no database seed, paid provider call, OAuth connection or real external execution. Sample usage/cost and absent details remain unavailable. Authenticated onboarding reuses the existing workflow creation path and directs the user to the saved workflow.
+
+Approve and Execute remain separate; follow-up timers create fresh proposals. Existing Release 0.7 live worker/reply verification gaps remain open until exercised. Missing Trigger configuration, verified model pricing or mailbox-read consent must remain visible as unavailable; HubSpot owner setup/live acceptance also remains a prerequisite. Implementation, SQL/mock tests and sample walkthroughs do not certify live provider acceptance.
+
+Release 0.9 delivers local reviewable changes and an actual performed-check report; no source commit, push, production deployment or Release 1.0 launch is authorized by this task. Calendar, new mailbox consent, billing, enterprise roles, major runtime/data rewrites and automatic strategy/model/approval optimization remain outside scope. Deployment documents are preparation, not completed-launch evidence.
 
 ## Product Definition
 

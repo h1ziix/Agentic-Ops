@@ -20,7 +20,14 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type AgentEventType = z.infer<typeof agentEventTypeSchema>;
 export type ApprovalDecision = z.infer<typeof approvalDecisionSchema>;
 
+export interface HistoryWindows {
+  agentRuns: { offset: number; limit: number; hasMore: boolean };
+  events: { offset: number; limit: number; hasMore: boolean };
+  execution: { limit: number };
+}
+
 export interface WorkspaceSnapshot {
+  historyWindows?: HistoryWindows;
   repliedLeadIds?: string[];
   integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
   actionSnapshots?: import("@/lib/validation/execution").ApprovalSnapshot[];
@@ -39,6 +46,7 @@ export interface WorkspaceSnapshot {
 }
 
 export interface WorkflowDetailSnapshot {
+  historyWindows?: HistoryWindows;
   repliedLeadIds?: string[];
   integrationConnections?: import("@/lib/validation/execution").IntegrationConnection[];
   actionSnapshots?: import("@/lib/validation/execution").ApprovalSnapshot[];

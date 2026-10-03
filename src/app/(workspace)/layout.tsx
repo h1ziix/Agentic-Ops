@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { DemoStoreProvider } from "@/components/app/demo-store";

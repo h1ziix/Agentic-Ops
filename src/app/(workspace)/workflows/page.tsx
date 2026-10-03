@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { ArrowUpDown, ArrowUpRight, GitBranch, Search, Workflow as WorkflowIcon, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
@@ -83,7 +83,7 @@ export default function WorkflowsPage() {
           })}
         </AnimatePresence>
         {!filteredWorkflows.length && <EmptyState icon={WorkflowIcon} title={filtersActive ? "No matching workflows" : "Your next goal starts here"} description={filtersActive ? "Try a broader search or another status." : "Describe an outcome to create a visible, auditable workflow plan."} action={filtersActive ? <Button variant="outline" size="sm" onClick={resetFilters}>Clear filters</Button> : <NewWorkflowButton />} />}
-        <div className="flex flex-wrap justify-between gap-2 bg-muted/25 px-5 py-3 text-[11px] text-muted-foreground"><span>{filteredWorkflows.length} of {workflows.length} workflows</span><span>{mode === "live" ? "Persisted workspace" : "Demo preview"} · external execution is disconnected</span></div>
+        <div className="flex flex-wrap justify-between gap-2 bg-muted/25 px-5 py-3 text-[11px] text-muted-foreground"><span>{filteredWorkflows.length} of {workflows.length} workflows</span><span>{mode === "live" ? "Persisted workspace · approval and Execute are separate" : "Sample workspace · external execution disabled"}</span></div>
       </div>
     </section>
   </div>;

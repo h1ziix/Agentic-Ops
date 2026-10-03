@@ -20,7 +20,8 @@ const agentRoles = [
   { title: "Planner", role: "Turns a goal into a sequence of tasks", code: "PL" },
   { title: "Research", role: "Discovers companies and prepares context", code: "RE" },
   { title: "Reviewer", role: "Qualifies opportunities and evaluates fit", code: "RV" },
-  { title: "Executor", role: "Carries out actions after human approval", code: "EX" },
+  { title: "Outreach", role: "Prepares personalized drafts from accepted evidence", code: "OU" },
+  { title: "Executor", role: "Performs deterministic, typed actions after exact approval and explicit Execute", code: "EX" },
 ];
 
 export default function SettingsPage() {
@@ -47,11 +48,11 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between gap-4 border-b border-border py-5"><div><p className="text-[13px] font-medium">Interface theme</p><p className="mt-1 text-xs text-muted-foreground">Choose light, dark, or follow your system.</p></div><ThemeSelector /></div>
           </section>
           <section id="agents" className="scroll-mt-8">
-            <SectionHeading title="Agent team" description="Four focused roles, with a visible record of their work." />
+            <SectionHeading title="Agent team & execution" description="Four focused AI roles and a deterministic Executor, with visible records of their work." />
             <div className="mt-1">
-              {agentRoles.map((agent) => <div key={agent.code} className="flex items-center gap-3 border-b border-border py-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[10px] text-muted-foreground">{agent.code}</span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{agent.title} Agent</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{agent.role}</p></div><span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">{mode === "live" ? "Available" : "Future stage"}</span></div>)}
+              {agentRoles.map((agent) => <div key={agent.code} className="flex items-center gap-3 border-b border-border py-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[10px] text-muted-foreground">{agent.code}</span><div className="min-w-0 flex-1"><p className="text-[13px] font-medium">{agent.title}{agent.code !== "EX" ? " Agent" : ""}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{agent.role}</p></div><span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">{agent.code === "EX" ? "Deterministic" : mode === "live" ? "AI role" : "Sample history"}</span></div>)}
             </div>
-            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{mode === "live" ? "Planning, research and preparation retain their AI provenance. The deterministic Executor performs separately approved typed actions." : "This browser preview uses sample data. Connect a workspace to run the Planner."}</p>
+            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{mode === "live" ? "Planning, research and preparation retain their model provenance. Provider configuration is required for live runs. The Executor performs separately approved actions." : "This isolated sample shows recorded agent work. Live runs and provider connections require a separate signed-in workspace."}</p>
           </section>
           <section id="integrations" className="scroll-mt-8">
             <SectionHeading title="Integrations" description="Connect approved execution to your mailbox and CRM." />

@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { WorkspaceLink as Link } from "@/components/app/workspace-link";
 import { motion } from "motion/react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 import {
@@ -82,7 +82,7 @@ export function WorkflowSignal({ workflow, stages }: { workflow: Workflow; stage
           />
         </div>
 
-        <ol aria-label="Execution stages" className="mt-6 grid grid-cols-4 gap-y-5 sm:grid-cols-7">
+        <ol aria-label="Execution stages" className="mt-6 grid grid-cols-4 gap-y-5 sm:grid-cols-8">
           {ordered.map((stage, index) => {
             const active = executing && stage.status === "running" && stage.label !== "Approval";
             const Icon = stage.status === "completed" ? Check : stage.status === "failed" ? CircleAlert : stageIcons[stage.label] ?? ClipboardList;

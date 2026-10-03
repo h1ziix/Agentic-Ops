@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { workspaceHref } from "@/lib/workspace-path";
 import { ArrowUpRight, BarChart3, Building2, CalendarClock, CornerDownLeft, FileSearch, FileStack, LayoutGrid, Search, Settings2, ShieldCheck, Target, UsersRound, Workflow, Activity } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ const pages = [
 export function CommandMenu({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const resultsRef = useRef<HTMLDivElement>(null);
   const { workflows, companies, leads, mode } = useDemoStore();
   useEffect(() => {
@@ -33,7 +35,7 @@ export function CommandMenu({ open, onOpenChange }: { open: boolean; onOpenChang
     ];
     return (needle ? all.filter(item => (item.label + " " + item.kind).toLowerCase().includes(needle)) : all.slice(0, 7)).slice(0, 12);
   }, [query, workflows, companies, leads]);
-  const navigate = (href: string) => { onOpenChange(false); setQuery(""); router.push(href); };
+  const navigate = (href: string) => { onOpenChange(false); setQuery(""); router.push(workspaceHref(href, pathname)); };
   return <Dialog open={open} onOpenChange={value => { onOpenChange(value); if (!value) setQuery(""); }}>
     <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl" showCloseButton={false}>
       <DialogTitle className="sr-only">Search workspace</DialogTitle><DialogDescription className="sr-only">Find pages, workflows, companies and leads. Use arrow keys to move through results.</DialogDescription>

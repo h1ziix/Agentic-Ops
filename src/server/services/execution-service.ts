@@ -47,7 +47,7 @@ export async function recoverExecution(workflowId: string) {
 }
 async function crmSource(actionId: string, connectionId: string) {
   const context = await requireWorkspace();
-  const action = (await new ApprovalRepository(context.supabase).listWorkspaceProposedActions(context.workspace.id)).find((a) => a.id === actionId);
+  const action = await new ApprovalRepository(context.supabase).getProposedActionById(context.workspace.id, actionId);
   if (!action || action.superseded_by_id || ["rejected", "cancelled"].includes(action.status)) throw new AppError("not_found");
   const envelope = emailEnvelopeSchema.parse(action.executable_envelope);
   const connection = (await new IntegrationRepository(context.supabase).list(context.workspace.id)).find((c) => c.id === connectionId && c.provider === "hubspot" && c.status === "connected");
@@ -82,11 +82,11 @@ export async function cancelFollowUp(input: unknown) {
 }
 export async function reconcileExecution(workflowId: string, input: unknown) {
   const request = reconciliationRequestSchema.parse(input); const context = await requireWorkspace(); const workflow = z.uuid().parse(workflowId);
-  const data = await new ExecutionRepository(context.supabase).list(context.workspace.id, workflow);
-  const attempt = data.executionAttempts.find((t) => t.id === request.attemptId);
+  const repository = new ExecutionRepository(context.supabase);
+  const attempt = await repository.getAttempt(context.workspace.id, workflow, request.attemptId);
   if (!attempt || attempt.status !== "outcome_unknown") throw new AppError("execution_blocked");
   if (request.resolution !== "crm_read") return new ExecutionRepository(context.supabase).rpc("reconcile_email_outcome", { p_attempt: request.attemptId, p_resolution: request.resolution, p_note: request.note });
-  const snapshot = data.actionSnapshots.find((s) => s.id === attempt.snapshot_id);
+  const snapshot = await repository.getSnapshot(context.workspace.id, workflow, attempt.snapshot_id, attempt.action_id);
   const envelope = crmEnvelopeSchema.parse(snapshot?.envelope);
   if (snapshot?.digest !== envelopeDigest(envelope)) throw new AppError("conflict");
   const connection = (await new IntegrationRepository(context.supabase).list(context.workspace.id)).find((c) => c.id === envelope.connection.id && c.generation === envelope.connection.generation && c.provider_identity === envelope.connection.identity);

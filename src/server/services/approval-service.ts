@@ -37,8 +37,7 @@ export async function resolveApproval(approvalId: string, decision: unknown, edi
 export async function saveExecutableEmail(input: unknown) {
   const edit = executableEmailEditSchema.parse(input);
   const { supabase, workspace } = await requireWorkspace(); const repository = new ApprovalRepository(supabase);
-  const actions = await repository.listWorkspaceProposedActions(workspace.id);
-  const original = actions.find((a) => a.id === edit.actionId);
+  const original = await repository.getProposedActionById(workspace.id, edit.actionId);
   if (!original) throw new AppError("not_found");
   // Historical loose JSON remains readable but cannot acquire execution rights.
   if (!emailActionPayloadSchema.safeParse(original.payload).success) throw new AppError("execution_blocked", "This historical proposal has no valid grounded provenance. Prepare a new draft.");

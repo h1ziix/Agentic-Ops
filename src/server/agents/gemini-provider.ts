@@ -1,4 +1,5 @@
 import "server-only";
+import { serverEnvironment } from "../config/env";
 import { z } from "zod";
 import type { TokenUsage, PlannerProvider } from "./planner-agent";
 import { plannerOutputSchema, type PlannerInput } from "@/lib/validation/planner";
@@ -26,7 +27,7 @@ export interface ResearchPlanningProvider {
 
 export class GeminiProvider implements AnalysisProvider, ResearchPlanningProvider {
   async generateStructured(schema: z.ZodType, system: string, input: unknown, model: string, timeoutMs: number) {
-    const key = process.env.GEMINI_API_KEY?.trim();
+    const key = serverEnvironment().GEMINI_API_KEY?.trim();
     if (!key || !/^gemini-[a-z0-9.-]+$/.test(model)) throw new ResearchError("ai_configuration", "gemini");
     const response = await providerJson("gemini", `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },

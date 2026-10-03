@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createServerClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { AppError } from "@/server/errors";
+import { getAppOrigin } from "@/server/config/env";
 
 const credentialsSchema = z.object({
   email: z.email("Enter a valid email address.").trim().max(254),
@@ -28,13 +29,13 @@ export async function authenticate(_state: AuthActionState, formData: FormData):
 
   const supabase = await createServerClient();
   if (mode === "sign-up") {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const safeAppUrl = appUrl ? z.url({ protocol: /^https?$/ }).safeParse(appUrl) : null;
-    if (!safeAppUrl?.success) return { error: "Set NEXT_PUBLIC_APP_URL before creating an account." };
+    let appUrl: string;
+    try { appUrl = getAppOrigin(); }
+    catch { return { error: "Set NEXT_PUBLIC_APP_URL to the canonical application origin before creating an account." }; }
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: new URL("/auth/callback", safeAppUrl.data).toString() },
+      options: { emailRedirectTo: new URL("/auth/callback", appUrl).toString() },
     });
     if (error) return { error: "Account creation could not be completed. Check your details and try again." };
     if (!data.session) return { message: "Check your email for a confirmation link, then sign in." };

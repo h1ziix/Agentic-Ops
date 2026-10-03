@@ -1,7 +1,8 @@
 {
   "name": "agentic-ops",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
+  "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "verify:client-secrets": "node scripts/verify-client-secrets.mjs",
-    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-execution.test.ts src/server/agents/research-providers.test.ts src/server/agents/outreach.test.ts src/server/agents/outreach-execution.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts src/server/execution/contracts.test.ts src/server/execution/executor.test.ts src/server/integrations/providers.test.ts src/server/integrations/oauth.test.ts src/server/http/mutations.test.ts src/server/automation/automation.test.ts src/server/integrations/gmail-monitor.test.ts src/server/observability/observability.test.ts src/server/observability/runtime-telemetry.test.ts src/server/automation/completion-recovery.test.ts src/server/automation/health-recovery.test.ts src/server/automation/reply-scheduler.test.ts src/server/automation/followup-actor.test.ts src/server/analytics/analytics.test.ts src/server/services/strategy.test.ts src/lib/prospect-filters.test.ts src/lib/workflow-defaults.test.ts src/lib/demo-fixture.test.ts src/server/repositories/security-boundaries.test.ts src/components/workflow-detail/pipeline-state.test.ts",
+    "verify:env": "tsx --conditions=react-server scripts/verify-env.ts",
+    "test": "tsx --conditions=react-server --test src/server/state/workflow.test.ts src/server/agents/planner.test.ts src/server/agents/orchestrator.test.ts src/server/agents/openai-planner-provider.test.ts src/server/agents/research.test.ts src/server/agents/research-execution.test.ts src/server/agents/research-providers.test.ts src/server/agents/outreach.test.ts src/server/agents/outreach-execution.test.ts src/lib/validation/supabase-env.test.ts src/lib/workspace-view.test.ts src/server/execution/contracts.test.ts src/server/execution/executor.test.ts src/server/integrations/providers.test.ts src/server/integrations/oauth.test.ts src/server/http/mutations.test.ts src/server/automation/automation.test.ts src/server/integrations/gmail-monitor.test.ts src/server/observability/observability.test.ts src/server/observability/runtime-telemetry.test.ts src/server/automation/completion-recovery.test.ts src/server/automation/health-recovery.test.ts src/server/automation/reply-scheduler.test.ts src/server/automation/followup-actor.test.ts src/server/analytics/analytics.test.ts src/server/services/strategy.test.ts src/lib/prospect-filters.test.ts src/lib/workflow-defaults.test.ts src/lib/demo-fixture.test.ts src/server/repositories/security-boundaries.test.ts src/components/workflow-detail/pipeline-state.test.ts src/server/config/env.test.ts",
     "verify:research": "tsx --conditions=react-server scripts/verify-research.ts",
     "verify:outreach": "tsx --conditions=react-server scripts/verify-outreach.ts",
     "verify:execution": "tsx --conditions=react-server scripts/verify-execution.ts",

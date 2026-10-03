@@ -21,10 +21,12 @@ import { AgentEventRepository } from "../repositories/agent-repositories";
 
 export async function followupContext(db: ServerSupabase, context: AutomationContext, planId: string) {
   const plan = await new AutomationRepository(db).getFollowup(context.workspaceId, planId);
-  const execution = await new ExecutionRepository(db).list(context.workspaceId, plan.workflow_id);
-  const attempt = execution.executionAttempts.find((entry) => entry.id === plan.parent_attempt_id && entry.status === "succeeded");
-  const snapshot = execution.actionSnapshots.find((entry) => entry.id === attempt?.snapshot_id);
-  if (!attempt || !snapshot) throw new AppError("invalid_transition");
+  const execution = new ExecutionRepository(db);
+  // Old approved plans remain valid after their parent's execution leaves display windows.
+  const attempt = await execution.getAttempt(context.workspaceId, plan.workflow_id, plan.parent_attempt_id);
+  if (!attempt || attempt.status !== "succeeded") throw new AppError("invalid_transition");
+  const snapshot = await execution.getSnapshot(context.workspaceId, plan.workflow_id, attempt.snapshot_id, attempt.action_id);
+  if (!snapshot) throw new AppError("invalid_transition");
   const email = emailEnvelopeSchema.parse(snapshot.envelope);
   const connection = (await new IntegrationRepository(db).list(context.workspaceId)).find((entry) => entry.id === email.connection.id);
   if (!connection || connection.status !== "connected" || connection.generation !== email.connection.generation || connection.provider_identity !== email.connection.identity)

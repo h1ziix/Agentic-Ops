@@ -1,4 +1,5 @@
 import "server-only";
+import { getAIProvider } from "../config/env";
 import type { ServerSupabase } from "../auth/context";
 import { WorkflowRepository } from "../repositories/workflow-repository";
 import { ResearchRepository, SupabaseResearchCache } from "../repositories/research-repository";
@@ -27,7 +28,7 @@ export function automationRuntime(db: ServerSupabase, workspaceId: string, stage
   const researcher = new ResearchAgent(new TavilyProvider(), analysis, new SupabaseResearchCache(db, workspaceId), undefined, analysis);
   return new Orchestrator({ getWorkflowById: workflows.getWorkflowById.bind(workflows), listWorkflowTasks: workflows.listWorkflowTasks.bind(workflows),
     listWorkspaceRuns: runs.listWorkspaceRuns.bind(runs) }, new AgentRunService(stage === "planning" ? runs : research), new EventService(new AgentEventRepository(db)),
-    new AgentRuntime(new PlannerAgent(process.env.AI_PROVIDER === "gemini" ? new GeminiPlannerProvider() : new OpenAIPlannerProvider()), undefined,
+    new AgentRuntime(new PlannerAgent(getAIProvider() === "gemini" ? new GeminiPlannerProvider() : new OpenAIPlannerProvider()), undefined,
       researcher, new ReviewerAgent(analysis), new OutreachAgent(analysis)), research, outreach, new AgentRunService(outreach),
     new Executor(new ExecutionRepository(db), new IntegrationService(new IntegrationRepository(db))));
 }

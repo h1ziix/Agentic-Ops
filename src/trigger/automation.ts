@@ -1,12 +1,11 @@
 import { task, schedules } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { signJobBody } from "../server/automation/job-auth";
+import { getAutomationAppOrigin, serverEnvironment } from "../server/config/env";
 
 async function invoke(payload: { operation: "dispatch"; jobId: string; providerRunId: string } | { operation: "sweep"; providerRunId: string }) {
-  const secret = process.env.AUTOMATION_JOB_SIGNING_SECRET ?? "";
-  const origin = new URL(process.env.AUTOMATION_APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "");
-  if (origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash
-    || (origin.protocol !== "https:" && !(origin.protocol === "http:" && ["localhost", "127.0.0.1"].includes(origin.hostname)))) throw new Error("Configure the canonical automation app origin.");
+  const secret = serverEnvironment().AUTOMATION_JOB_SIGNING_SECRET ?? "";
+  const origin = new URL(getAutomationAppOrigin());
   const body = JSON.stringify(payload); const timestamp = String(Date.now());
   const response = await fetch(new URL("/api/automation/dispatch", origin), { method: "POST", redirect: "error", signal: AbortSignal.timeout(300_000),
     headers: { "Content-Type": "application/json", "X-Job-Timestamp": timestamp, "X-Job-Signature": signJobBody(body, timestamp, secret) }, body });

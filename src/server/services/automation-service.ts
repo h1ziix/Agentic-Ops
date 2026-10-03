@@ -10,14 +10,16 @@ import { dispatchJob } from "../automation/worker";
 import { TriggerJobScheduler } from "../automation/scheduler";
 import { resolveFollowupActor } from "../automation/followup-actor";
 import { AppError } from "../errors";
+import { serverEnvironment } from "../config/env";
 
 export async function listAutomation(workflowId?: string) {
   const context = await requireWorkspace();
   const id = workflowId ? z.uuid().parse(workflowId) : undefined;
   if (id && !await new WorkflowRepository(context.supabase).getWorkflowById(context.workspace.id, id)) throw new AppError("not_found");
   const { enabled, providerConfigured } = automationConfiguration();
+  const env = serverEnvironment();
   return { automation: await new AutomationRepository(context.supabase).list(context.workspace.id, id), enabled, providerConfigured,
-    testJobsAllowed: process.env.NODE_ENV === "development" && process.env.AUTOMATION_ALLOW_TEST_JOBS === "true" };
+    testJobsAllowed: env.NODE_ENV === "development" && env.AUTOMATION_ALLOW_TEST_JOBS === "true" };
 }
 export async function scheduleWorkflowAutomation(workflowId: string, operation: "continue" | "health_check" | "recover" = "continue", retry = false) {
   requireAutomation(); const id = z.uuid().parse(workflowId); const context = await requireWorkspace();
@@ -44,9 +46,7 @@ export async function mutateAutomationJob(jobId: string, operation: "retry" | "c
 export async function scheduleExecutionRetry(workflowId: string, actionId: string, expectedSnapshotId: string) {
   requireAutomation(); const context = await requireWorkspace(); const workflow = z.uuid().parse(workflowId);
   const action = z.uuid().parse(actionId); const snapshot = z.uuid().parse(expectedSnapshotId);
-  const attempts = (await new ExecutionRepository(context.supabase).list(context.workspace.id, workflow)).executionAttempts
-    .filter((entry) => entry.action_id === action && entry.snapshot_id === snapshot).sort((a, b) => b.attempt_number - a.attempt_number);
-  const attempt = attempts[0];
+  const attempt = await new ExecutionRepository(context.supabase).getLatestAttempt(context.workspace.id, workflow, action, snapshot);
   if (!attempt || attempt.status !== "failed_retryable" || !attempt.retry_eligible || attempt.attempt_number >= 3) throw new AppError("execution_blocked");
   const repository = new AutomationRepository(createRuntimeClient());
   return dispatchJob(await repository.schedule({ workspaceId: context.workspace.id, userId: context.user.id, workflowId: workflow,
@@ -75,7 +75,8 @@ export async function mutateFollowup(planId: string, operation: "cancel" | "test
     return { cancelled: true };
   }
   requireAutomation();
-  if (process.env.NODE_ENV !== "development" || process.env.AUTOMATION_ALLOW_TEST_JOBS !== "true") throw new AppError("unauthorized");
+  const env = serverEnvironment();
+  if (env.NODE_ENV !== "development" || env.AUTOMATION_ALLOW_TEST_JOBS !== "true") throw new AppError("unauthorized");
   const actor = await resolveFollowupActor(admin, plan);
   if (!actor) throw new AppError("execution_blocked", "The plan's approver must still have workspace access and owner access for reply monitoring.");
   // A near-term test advances internal draft preparation only; it cannot authorize an email.

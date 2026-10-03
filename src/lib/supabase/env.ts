@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { isSupabasePublicKey } from "../validation/supabase-public-key";
 
 const supabaseEnvSchema = z.object({
   url: z.url({ protocol: /^https?$/ }),
-  publishableKey: z.string().trim().min(1),
+  publishableKey: z.string().trim().min(1).refine(isSupabasePublicKey),
 });
 
 export function isSupabaseConfigured(): boolean {

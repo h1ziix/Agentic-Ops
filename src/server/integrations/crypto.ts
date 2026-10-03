@@ -1,11 +1,12 @@
 import "server-only";
+import { serverEnvironment } from "../config/env";
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { AppError } from "../errors";
 const encryptedSchema = z.object({ version: z.literal(1), nonce: z.string(), tag: z.string(), ciphertext: z.string() }).strict();
 export type EncryptionContext = { workspaceId: string; connectionId: string; provider: string };
 function key() {
-  const encoded = process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY?.trim();
+  const encoded = serverEnvironment().INTEGRATION_TOKEN_ENCRYPTION_KEY?.trim();
   if (!encoded || !/^[A-Za-z0-9+/]{43}=$/.test(encoded)) throw new AppError("integration_configuration", "Configure INTEGRATION_TOKEN_ENCRYPTION_KEY with 32 random bytes in base64.");
   const decoded = Buffer.from(encoded, "base64");
   if (decoded.length !== 32) throw new AppError("integration_configuration");

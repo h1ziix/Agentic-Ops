@@ -31,6 +31,9 @@ begin
     or has_column_privilege('authenticated','public.execution_attempts','claim_token','SELECT')
     or has_function_privilege('authenticated','public.claim_execution(uuid,uuid,uuid,uuid,uuid,uuid,uuid,boolean)','EXECUTE')
     or has_function_privilege('anon','public.finish_execution(uuid,uuid,uuid,uuid,text,jsonb,text,integer,text)','EXECUTE')
+    or has_function_privilege('service_role','public.claim_execution_before_claim_fencing(uuid,uuid,uuid,uuid,uuid,uuid,uuid,boolean)','EXECUTE')
+    or has_function_privilege('service_role','public.dispatch_execution_before_claim_fencing(uuid,uuid,uuid,uuid)','EXECUTE')
+    or has_function_privilege('service_role','public.finish_execution_before_claim_fencing(uuid,uuid,uuid,uuid,text,jsonb,text,integer,text)','EXECUTE')
     or has_function_privilege('authenticated','public.resolve_outreach_actions_stage5(uuid,public.approval_status,uuid[])','EXECUTE') then raise exception 'Unsafe grants'; end if;
   insert into auth.users(id,email,raw_user_meta_data) values(u,u::text||'@execution.invalid','{}'),(other_u,other_u::text||'@execution.invalid','{}'),(member_u,member_u::text||'@execution.invalid','{}');
   perform set_config('request.jwt.claim.sub',u::text,true); perform set_config('request.jwt.claim.role','authenticated',true); ws:=public.bootstrap_workspace();
@@ -80,17 +83,28 @@ begin
   begin perform public.transition_workflow(wf,'running','Bypass'); raise exception 'Generic workflow bypass'; exception when invalid_parameter_value then null; end;
   begin perform public.transition_workflow_task((select id from public.workflow_tasks where workflow_id=wf and type='execute_approved_actions'),'completed','Bypass'); raise exception 'Generic task bypass'; exception when invalid_parameter_value then null; end;
   perform set_config('request.jwt.claim.role','service_role',true); token:=gen_random_uuid();
+  begin perform public.claim_execution(ws,u,wf,a.id,snapshot,gen_random_uuid(),null); raise exception 'Missing execution capability accepted'; exception when invalid_parameter_value then null; end;
+  begin perform public.claim_execution(ws,u,wf,a.id,snapshot,gen_random_uuid(),token,null); raise exception 'Missing explicit retry intent accepted'; exception when invalid_parameter_value then null; end;
+  if exists(select 1 from public.execution_attempts where workflow_id=wf) then raise exception 'Invalid claim input mutated execution history'; end if;
   t:=public.claim_execution(ws,u,wf,a.id,snapshot,gen_random_uuid(),token);
   replay:=public.claim_execution(ws,u,wf,a.id,snapshot,gen_random_uuid(),gen_random_uuid()); if replay.id<>t.id then raise exception 'Replay duplicated claim'; end if;
   replay:=public.claim_execution(ws,u,wf,b.id,(b.executable_envelope->>'snapshotId')::uuid,gen_random_uuid(),gen_random_uuid()); if replay.id<>t.id then raise exception 'Concurrent sibling claimed'; end if;
+  begin perform public.dispatch_execution(ws,u,t.id,null); raise exception 'NULL capability bypassed dispatch fence'; exception when serialization_failure then null; end;
+  begin perform public.dispatch_execution(ws,u,t.id,gen_random_uuid()); raise exception 'Wrong capability bypassed dispatch fence'; exception when serialization_failure then null; end;
+  begin perform public.finish_execution(ws,u,t.id,null,'cancelled_before_dispatch',null,'test_claim_fence'); raise exception 'NULL capability bypassed completion fence'; exception when serialization_failure then null; end;
+  begin perform public.finish_execution(ws,u,t.id,gen_random_uuid(),'cancelled_before_dispatch',null,'test_claim_fence'); raise exception 'Wrong capability bypassed completion fence'; exception when serialization_failure then null; end;
+  if (select status from public.execution_attempts where id=t.id)<>'claimed'
+    or exists(select 1 from public.agent_events where agent_run_id=t.executor_run_id and event_type in ('execution_started','execution_failed')) then raise exception 'Fenced caller mutated state or audit history'; end if;
   execute 'create trigger mock_dispatch_audit before insert on public.agent_events for each row execute function pg_temp.reject_dispatch_audit()';
   begin perform public.dispatch_execution(ws,u,t.id,token); raise exception 'Mock audit should fail'; exception when raise_exception then null; end;
   if (select status from public.execution_attempts where id=t.id)<>'claimed' then raise exception 'Audit failure did not roll back dispatch'; end if;
   execute 'drop trigger mock_dispatch_audit on public.agent_events';
   perform public.dispatch_execution(ws,u,t.id,token);
+  begin perform public.finish_execution(ws,u,t.id,null,'succeeded','{"messageId":"mock-null-capability"}'); raise exception 'NULL capability accepted a dispatched result'; exception when serialization_failure then null; end;
   begin perform public.finish_execution(ws,u,t.id,token,'succeeded','{"unexpected":"secret"}'); raise exception 'Malformed result accepted'; exception when invalid_parameter_value then null; end;
   if (select status from public.execution_attempts where id=t.id)<>'dispatching' or (select status from public.proposed_actions where id=a.id)<>'approved' then raise exception 'Completion rollback failed'; end if;
   t:=public.finish_execution(ws,u,t.id,token,'succeeded','{"messageId":"mock-gmail-1","threadId":"mock-thread","acceptedAt":"2026-10-01T00:00:00Z"}');
+  begin perform public.finish_execution(ws,u,t.id,null,'succeeded','{"messageId":"mock-null-replay"}'); raise exception 'NULL capability accepted a successful replay'; exception when serialization_failure then null; end;
   begin insert into public.execution_attempts(id,workspace_id,workflow_id,action_id,snapshot_id,connection_id,attempt_number,operation_key,executor_run_id,claim_token,lease_until,status)
     values(gen_random_uuid(),ws,wf,a.id,snapshot,gmail,2,gen_random_uuid()::text,t.executor_run_id,gen_random_uuid(),now(),'succeeded'); raise exception 'Second success allowed'; exception when unique_violation then null; end;
   replay:=public.claim_execution(ws,u,wf,a.id,snapshot,gen_random_uuid(),gen_random_uuid()); if replay.id<>t.id then raise exception 'Successful replay duplicated'; end if;

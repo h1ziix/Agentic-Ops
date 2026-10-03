@@ -1,4 +1,5 @@
 import "server-only";
+import { getWorkspaceTimezone } from "../config/env";
 import { intelligenceFilterSchema, type IntelligenceData } from "@/types/intelligence";
 import { requireWorkspace } from "../auth/context";
 import { AppError } from "../errors";
@@ -11,7 +12,7 @@ export async function loadIntelligence(query: Record<string, string | string[] |
   const parsed = intelligenceFilterSchema.safeParse(input);
   if (!parsed.success) throw new AppError("validation");
   const { supabase, workspace } = await requireWorkspace();
-  const period = analyticsPeriod(parsed.data.range, now, process.env.WORKSPACE_TIMEZONE ?? "Asia/Qyzylorda");
+  const period = analyticsPeriod(parsed.data.range, now, getWorkspaceTimezone());
   const data = await new AnalyticsRepository(supabase).load(workspace.id, parsed.data, period);
   return { ...data, filters: parsed.data, period, funnel: buildLeadFunnel(data.summary), insights: deriveInsights(data) };
 }

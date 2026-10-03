@@ -2,7 +2,7 @@
 
 ## Current release boundary
 
-The stages below are historical planning. Release 0.9 is Portfolio / Production Polish, starting from checkpoint `f1cf331` (combined Releases 0.7–0.8). It refines the existing operational dark/light interface, first-run onboarding, isolated public demo, accessibility, resilience, documentation and deployment preparation. Orchestrator, AgentRuntime, deterministic Executor, checked repositories and the existing state/approval system remain authoritative.
+The stages below are historical planning. The current task is Release 1.0 production readiness and launch verification, starting from the preserved Release 0.9 checkpoint `d89d683`. The product is a **1.0 candidate**, not a certified or deployed release. Scope is frozen to audit, targeted hardening, verification, documentation and the existing Vercel/Supabase deployment. Orchestrator, AgentRuntime, deterministic Executor, checked repositories and the existing state/approval system remain authoritative.
 
 Intelligence uses real persisted records, workspace-safe aggregation, documented company-workflow cohort semantics and nullable usage/cost. Templates guide the Planner; explicit goals remain authoritative. Workflow strategy and lead research/qualification snapshots preserve history after source edits. Analytics do not automatically change prompts, scores, models or approval policy.
 
@@ -10,7 +10,9 @@ The public `/demo` contains one versioned fictional showcase with reserved `.exa
 
 Approve and Execute remain separate; follow-up timers create fresh proposals. Existing Release 0.7 live worker/reply verification gaps remain open until exercised. Missing Trigger configuration, verified model pricing or mailbox-read consent must remain visible as unavailable; HubSpot owner setup/live acceptance also remains a prerequisite. Implementation, SQL/mock tests and sample walkthroughs do not certify live provider acceptance.
 
-Release 0.9 delivers local reviewable changes and an actual performed-check report; no source commit, push, production deployment or Release 1.0 launch is authorized by this task. Calendar, new mailbox consent, billing, enterprise roles, major runtime/data rewrites and automatic strategy/model/approval optimization remain outside scope. Deployment documents are preparation, not completed-launch evidence.
+The Release 1.0 request authorizes deployment when the intended accounts, environment and credentials are available. Stop at a required external login or authorization; never invent credentials. Approve and Execute retain their distinct product gates, and external testing uses only confirmed controlled recipients or provider sandboxes. A final commit/tag is permitted only after release acceptance; do not create one with unresolved blockers. Calendar, silent mailbox consent expansion, billing, enterprise roles, major runtime/data rewrites and automatic strategy/model/approval optimization remain outside scope.
+
+Current evidence and exact unresolved prerequisites belong in `docs/release-1.0-audit.md`, `docs/release-1.0-verification.md` and `docs/release-checklist.md`. Preserve historical verification reports unchanged. Deployment instructions, local tests and fictional demo screenshots do not establish production or provider acceptance. Release 1.0 is the stopping point; post-release ideas remain recommendations.
 
 ## Product Definition
 

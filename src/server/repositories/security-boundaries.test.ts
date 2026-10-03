@@ -9,6 +9,7 @@ import { loadHistoryPage, parseHistoryParams } from "../services/history-service
 import { executionFixture, attemptFixture } from "../execution/testing/execution-fixtures";
 import { loadWorkspaceObservability } from "../observability/service";
 import { historyEventsPageSchema } from "@/lib/validation/history";
+import { followupContext } from "../automation/followup-handler";
 
 type Row = Record<string, unknown>;
 interface RecordedRead { table: string; columns: string; filters: [string, unknown][]; maximum?: number; range?: [number, number]; orders: string[] }
@@ -77,6 +78,77 @@ test("Exact reconciliation reads reject cross-workspace/workflow snapshots and a
   assert.equal(await repository.getSnapshot(fixture.request.workspaceId, fixture.workflow.id, fixture.snapshot.id, randomUUID()), null);
   assert.equal(await repository.getAttempt(randomUUID(), fixture.workflow.id, attempt.id), null);
   assert.equal(await repository.getAttempt(fixture.request.workspaceId, randomUUID(), attempt.id), null);
+});
+
+function followupFixture() {
+  const fixture = executionFixture();
+  const parent = { ...attemptFixture(fixture), status: "succeeded", result: { messageId: "saved-message", threadId: "saved-thread" } };
+  const plan = { id: randomUUID(), workspace_id: fixture.request.workspaceId, workflow_id: fixture.workflow.id,
+    action_id: randomUUID(), snapshot_id: randomUUID(), parent_attempt_id: parent.id, due_at: new Date().toISOString(), timezone: "UTC", note: null,
+    status: "planned", created_at: new Date().toISOString(), cancelled_at: null, automation_status: "scheduled", lead_id: fixture.envelope.leadId,
+    company_id: fixture.envelope.companyId, draft_action_id: null, last_reply_at: null, last_checked_at: null, completed_at: null, updated_at: new Date().toISOString() };
+  return { fixture, parent, plan };
+}
+
+test("Follow-up preparation and monitoring retain exact old parent evidence beyond execution display windows", async () => {
+  const { fixture, parent, plan } = followupFixture();
+  const unrelated = randomUUID();
+  const { db, reads } = fakeDatabase({ follow_up_plans: [row(plan)], integration_connections: [row(fixture.connection)],
+    execution_attempts: [...Array.from({ length: 250 }, () => row({ ...parent, id: randomUUID(), action_id: unrelated })), row(parent)],
+    action_approval_snapshots: [...Array.from({ length: 250 }, () => row({ ...fixture.snapshot, id: randomUUID(), action_id: unrelated })), row(fixture.snapshot)],
+  });
+  const execution = new ExecutionRepository(db);
+  assert.equal((await execution.list(fixture.request.workspaceId, fixture.workflow.id)).executionAttempts.some((attempt) => attempt.id === parent.id), false);
+  assert.equal((await execution.list(fixture.request.workspaceId, fixture.workflow.id)).actionSnapshots.some((snapshot) => snapshot.id === fixture.snapshot.id), false);
+  reads.length = 0;
+  const loaded = await followupContext(db, fixture.request, plan.id);
+  assert.equal(loaded.attempt.id, parent.id);
+  assert.equal(loaded.email.snapshotId, fixture.snapshot.id);
+  for (const table of ["execution_attempts", "action_approval_snapshots"]) {
+    const read = reads.find((read) => read.table === table)!;
+    assert.equal(read.maximum, undefined);
+    assert.ok(read.filters.some(([key, value]) => key === "workspace_id" && value === plan.workspace_id));
+    assert.ok(read.filters.some(([key, value]) => key === "workflow_id" && value === plan.workflow_id));
+  }
+});
+
+test("Follow-up exact parent reads still reject foreign, incomplete and changed authorizations", async () => {
+  const { fixture, parent, plan } = followupFixture();
+  const scenarios = [
+    { parent: { ...parent, workspace_id: randomUUID() }, code: "invalid_transition" },
+    { parent: { ...parent, workflow_id: randomUUID() }, code: "invalid_transition" },
+    { parent: { ...parent, status: "outcome_unknown" }, code: "invalid_transition" },
+    { snapshot: { ...fixture.snapshot, action_id: randomUUID() }, code: "invalid_transition" },
+    { snapshot: { ...fixture.snapshot, workflow_id: randomUUID() }, code: "invalid_transition" },
+    { connection: { ...fixture.connection, generation: fixture.connection.generation + 1 }, code: "execution_blocked" },
+  ];
+  for (const scenario of scenarios) {
+    const { db } = fakeDatabase({ follow_up_plans: [row(plan)], execution_attempts: [row(scenario.parent ?? parent)],
+      action_approval_snapshots: [row(scenario.snapshot ?? fixture.snapshot)], integration_connections: [row(scenario.connection ?? fixture.connection)] });
+    await assert.rejects(followupContext(db, fixture.request, plan.id), { code: scenario.code });
+  }
+});
+
+test("Execution retry selects the latest exact action/snapshot attempt beyond display history and isolates all IDs", async () => {
+  const fixture = executionFixture(); const unrelated = randomUUID();
+  const older = { ...attemptFixture(fixture), status: "failed_retryable", retry_eligible: true };
+  const newest = { ...older, id: randomUUID(), attempt_number: 2, status: "succeeded", retry_eligible: false };
+  const { db, reads } = fakeDatabase({ execution_attempts: [
+    ...Array.from({ length: 250 }, () => row({ ...newest, id: randomUUID(), action_id: unrelated })), row(newest), row(older),
+  ] });
+  const repository = new ExecutionRepository(db);
+  const loaded = await repository.getLatestAttempt(fixture.request.workspaceId, fixture.workflow.id, fixture.action.id, fixture.snapshot.id);
+  assert.equal(loaded?.id, newest.id);
+  assert.equal(loaded?.retry_eligible, false);
+  assert.equal(reads[0].maximum, 1);
+  assert.deepEqual(reads[0].orders, ["attempt_number"]);
+  assert.equal(reads[0].columns.includes("claim_token"), false);
+  for (const ids of [
+    [randomUUID(), fixture.workflow.id, fixture.action.id, fixture.snapshot.id],
+    [fixture.request.workspaceId, randomUUID(), fixture.action.id, fixture.snapshot.id],
+    [fixture.request.workspaceId, fixture.workflow.id, randomUUID(), fixture.snapshot.id],
+    [fixture.request.workspaceId, fixture.workflow.id, fixture.action.id, randomUUID()],
+  ]) assert.equal(await repository.getLatestAttempt(ids[0], ids[1], ids[2], ids[3]), null);
 });
 
 test("Display history bounds are explicit and stable; invalid page windows fail closed", () => {

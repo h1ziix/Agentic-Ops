@@ -1,4 +1,5 @@
 import "server-only";
+import { getAIProvider } from "../config/env";
 import { recordIdSchema } from "@/lib/validation/workflow";
 import { createRuntimeClient } from "@/lib/supabase/admin";
 import { requireWorkspace } from "../auth/context";
@@ -27,6 +28,6 @@ export async function planWorkflow(workflowId: string) {
     listWorkflowTasks: workflows.listWorkflowTasks.bind(workflows),
     listWorkspaceRuns: reads.listWorkspaceRuns.bind(reads),
   }, new AgentRunService(new AgentRunRepository(admin)), new EventService(new AgentEventRepository(admin)),
-  new AgentRuntime(new PlannerAgent(process.env.AI_PROVIDER?.trim() === "gemini" ? new GeminiPlannerProvider() : new OpenAIPlannerProvider())));
+  new AgentRuntime(new PlannerAgent(getAIProvider() === "gemini" ? new GeminiPlannerProvider() : new OpenAIPlannerProvider())));
   return orchestrator.planWorkflow({ workflowId: id.data, workspaceId: workspace.id, userId: user.id });
 }

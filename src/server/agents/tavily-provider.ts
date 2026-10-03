@@ -1,4 +1,5 @@
 import "server-only";
+import { serverEnvironment } from "../config/env";
 import { z } from "zod";
 import { publicWebsiteSchema, type ResearchSource } from "@/lib/validation/research";
 import { RESEARCH_LIMITS, ResearchError } from "./research-budget";
@@ -30,7 +31,7 @@ export function normalizeTavilySources(response: unknown, limit: number = RESEAR
 
 export class TavilyProvider implements SearchProvider {
   async search(query: string, domain: string | null, timeoutMs: number) {
-    const apiKey = process.env.TAVILY_API_KEY?.trim();
+    const apiKey = serverEnvironment().TAVILY_API_KEY?.trim();
     if (!apiKey) throw new ResearchError("ai_configuration", "tavily");
     const response = await providerJson("tavily", "https://api.tavily.com/search", {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },

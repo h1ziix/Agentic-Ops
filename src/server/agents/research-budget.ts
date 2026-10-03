@@ -1,4 +1,5 @@
 import { AppError } from "../errors";
+import { serverEnvironment } from "../config/env";
 import type { TokenUsage } from "./planner-agent";
 
 export const RESEARCH_LIMITS = Object.freeze({ searches: 2, searchRequests: 3, modelRequests: 2, retries: 1,
@@ -19,7 +20,7 @@ export class ResearchError extends AppError {
 }
 
 export function researchCompanyLimit(requested: number): number {
-  const override = Number(process.env.MAX_RESEARCH_COMPANIES_PER_WORKFLOW ?? 20);
+  const override = Number(serverEnvironment().MAX_RESEARCH_COMPANIES_PER_WORKFLOW ?? 20);
   const ceiling = Number.isInteger(override) && override > 0 ? Math.min(override, 20) : 20;
   return Math.min(requested, ceiling);
 }

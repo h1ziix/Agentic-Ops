@@ -45,7 +45,7 @@ Capture with demo labels visible, fixed fixture state and consistent theme/viewp
 | [Automation](screenshots/automation.png) | Follow-up/job story and fresh approval |
 | [Intelligence](screenshots/intelligence.png) | Clearly labelled sample analytics |
 
-Use the Mermaid diagram in [architecture](architecture.md) for the system view. Actual browser/automated results belong in the Release 0.9 verification report, with live and sample checks distinguished.
+Use the Mermaid diagram in [architecture](architecture.md) for the system view. Current actual browser/automated results belong in [1.0 verification](release-1.0-verification.md); [0.9 verification](release-0.9-verification.md) preserves prior checks. Live and sample evidence remain distinct. The demo's versioned `v09` storage key is a fixture-compatibility namespace, not a production release version.
 
 ## Reproducing the offline smoke
 

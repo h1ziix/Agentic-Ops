@@ -14,6 +14,8 @@ ICP/template archive preserves history. Immutable workflow strategy, lead assess
 
 Supabase runtime, AI, OAuth and automation credentials are server environment variables. Only the Supabase project URL, publishable key and canonical app origin are public. `.env.local`, runtime reports and browser evidence are ignored. `verify:source-secrets` scans current files and historical Git blobs; `verify:client-secrets` scans built browser assets without printing credential values.
 
+Server configuration reads are centralized behind a server-only module. Browser-safe Supabase validation rejects `sb_secret_` and service-role JWT authority in the public key slot. Shared canonical-origin rules bind Auth/OAuth and worker callbacks to an origin without credentials/path/query/fragment; hosted Vercel configuration rejects loopback. Secret-safe preflight and hosted Node startup validation fail clearly on invalid required settings. They validate configuration shape, not account authorization or callback reachability.
+
 OAuth token and state tables are inaccessible to browser roles. Tokens and PKCE verifier state use AES-256-GCM with an explicitly configured key and workspace/connection/provider associated data. OAuth state is single-use, short-lived and bound to the initiating browser session. Owner checks protect connection management. Refresh and reconnect are fenced by credential versions and connection generations. Local disconnect revokes dispatch rights before attempted provider revocation. Encryption-key backup/rotation remains an operator procedure; there is no silent fallback key.
 
 ## Approval and external actions
@@ -23,6 +25,8 @@ AI agents can propose an action. A human reviews and approves the exact revision
 The immutable snapshot freezes recipient, sender identity, connection generation, content, approval actor/time and digest. The Executor reads that exact snapshot and the action's bounded attempts independently of UI history pages. Database claim/dispatch checks and audit persistence precede provider mutation. Edited or superseded proposals need a newly approved snapshot. Legacy loose approvals cannot acquire execution rights through display controls.
 
 Database operation keys, locks, claims and completion fences prevent repeated local dispatch. A confirmed result is retained if saving fails; recovery retries persistence of that same result. An uncertain Gmail outcome blocks blind resend. These controls do not promise exactly-once delivery across external networks. Gmail acceptance is not delivery/read proof, and HubSpot retains an external-edit race between its preview check and write.
+
+The 1.0 additive claim-fencing migration explicitly rejects null execution claim tokens and null retry intent; preserved backing operations remain restricted. Exact follow-up parent/snapshot and retry-attempt reads stay independent of UI history limits and recheck workspace/workflow/action identity. Historical results remain intact. Fresh and upgrade SQL evidence is recorded in the 1.0 report, not inferred from a successful source edit.
 
 ## Untrusted research and URL boundaries
 
@@ -38,8 +42,12 @@ Browser mutation handlers enforce the canonical origin and streamed request-size
 
 History APIs resolve the current workspace on the server, reject unknown/duplicate parameters and return 100 safe records per page with `hasMore`. UI snapshots load recent histories, not the whole event stream; exact approval/execution access does not depend on those windows. Server logs contain safe operation/error identifiers rather than raw provider bodies, tokens or hidden reasoning. Persisted safe summaries, tool events, approvals and attempts form the execution trace. Analytics and history reads create no domain events.
 
+## HTTP response protections
+
+Next.js declares `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin` and camera/microphone/geolocation restrictions. The limited CSP is `frame-ancestors 'none'; object-src 'none'; base-uri 'self'`. It restricts those surfaces and does not claim a complete script/content policy. Browser and deployed-header checks establish actual compatibility separately from this configuration.
+
 ## Public demo and verification limits
 
 `/demo` loads versioned fictional fixtures without a Supabase workspace or provider adapter. Sample contacts use `.example`, contain no executable envelope/snapshot and show explicit demo blockers. Local draft/approval interactions stay in browser storage. The authenticated application's external APIs keep their normal authorization regardless of whether a demo page is open.
 
-The performed Release 0.9 security checks and remaining live gates are recorded in [release-0.9-security-audit.md](release-0.9-security-audit.md). Production deployment, hosted RLS/configuration verification, live Trigger continuation/recovery, mailbox-read consent/reply testing, HubSpot controlled execution and pricing configuration remain separate acceptance work.
+Current performed checks are recorded in [1.0 verification](release-1.0-verification.md); the preserved [0.9 security audit](release-0.9-security-audit.md) remains historical evidence. Production deployment, hosted RLS/configuration verification, live Trigger continuation/recovery, mailbox-read consent/reply testing, HubSpot controlled execution and pricing configuration remain separate acceptance work.

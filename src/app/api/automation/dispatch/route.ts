@@ -1,6 +1,7 @@
 import { dispatchPayloadSchema, verifyJobBody } from "@/server/automation/job-auth";
 import { runAutomationJob, sweepAutomation } from "@/server/automation/worker";
 import { mutationError } from "@/server/http/mutations";
+import { serverEnvironment } from "@/server/config/env";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export async function POST(request: Request) {
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
       if (bytes > 4096) { await reader.cancel(); return Response.json({ error: "Invalid job request." }, { status: 400 }); } chunks.push(chunk.value); }
   } finally { reader.releaseLock(); }
   const body = Buffer.concat(chunks).toString("utf8");
-  if (!verifyJobBody(body, request.headers.get("x-job-timestamp"), request.headers.get("x-job-signature"), process.env.AUTOMATION_JOB_SIGNING_SECRET))
+  if (!verifyJobBody(body, request.headers.get("x-job-timestamp"), request.headers.get("x-job-signature"), serverEnvironment().AUTOMATION_JOB_SIGNING_SECRET))
     return Response.json({ error: "Job authentication failed." }, { status: 401 });
   try {
     const input = dispatchPayloadSchema.parse(JSON.parse(body));

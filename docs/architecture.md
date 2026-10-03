@@ -8,7 +8,9 @@ flowchart TD
     S --> O[Orchestrator]
     O --> RT[AgentRuntime]
     RT --> P[Planner]
+    P --> MODELS[Gemini / optional OpenAI structured output]
     P --> R[Research Agent]
+    R --> TOOLS[Bounded Tavily search / Gemini analysis]
     R --> RV[Reviewer Agent]
     RV --> OUT[Outreach Agent]
     OUT --> PROP[Proposed action]
@@ -27,6 +29,8 @@ flowchart TD
     O --> DB
     E --> DB
     CB --> DB
+    RT --> OBS[Safe runs / tool events / usage / retry telemetry]
+    OBS --> DB
     DB --> I[Workspace-scoped Intelligence]
     I --> UI
 ```
@@ -41,6 +45,14 @@ The App Router in `src/app` provides Dashboard, Workflows, Companies, Leads, App
 
 The view adapter in `src/lib/workspace-view.ts` translates validated database records into presentation models. Production data is distinct from explicitly labelled sample content. Missing provider configuration and unknown metrics remain visible states.
 
+## Configuration and hosting boundary
+
+`src/server/config/env.ts` reads server configuration lazily behind a server-only boundary. Auth, integration callbacks, mutation-origin checks and workers share canonical origin validation. Hosted Vercel origins reject loopback; local production-build QA can use loopback. Browser Supabase configuration independently rejects secret/service-role authority.
+
+`npm run verify:env` validates configuration shape without printing values; `-- --production --require-automation` applies launch constraints. Next.js instrumentation repeats production validation at hosted Node server startup. This is not provider authentication or a reachability test. Public variables are fixed at build time and require rebuilding after changes.
+
+The intended deployment is Next.js on Vercel with Node 24, Supabase and the existing Trigger worker. App response headers restrict framing, MIME sniffing, object embedding, base origins, referrer leakage and unused browser permissions. The limited CSP does not include a full script policy. Actual hosted compatibility and provider acceptance remain launch gates; see [deployment](deployment.md).
+
 ## Public demo and first run
 
 `/demo` redirects to `/demo/dashboard`. Its own layout mounts DemoStore without a real-workspace snapshot or Auth requirement. The catch-all demo route reuses client presentation for operational screens; sample Automation, Intelligence and strategy views live in `src/components/demo/demo-overview.tsx`. Links preserve the `/demo` namespace. A bounded fixture in `src/lib/demo-fixture.ts` and local storage supply fictional data, decisions and draft creation. No demo record is inserted into Supabase and no timer simulates live progress.
@@ -54,6 +66,8 @@ Authenticated `/onboarding` offers targeting criteria and the existing workflow 
 Supabase Auth, PostgreSQL and versioned migrations provide the persistence layer. Workspace membership policies isolate reads. Checked RPCs repeat authorization, related-record and state guards under row locks, including when called with the service-role runtime client. Preparation/runtime mutations are restricted to their intended roles; browser clients cannot directly manufacture successful runs, approval snapshots or execution attempts.
 
 Core records include workflows, tasks, agent runs/events, canonical companies, company–workflow associations, leads, approvals, proposed actions, immutable approval snapshots, execution attempts, integration connections, follow-up plans and automation jobs. OAuth credentials and claim capabilities are server-only. ICPs/templates belong to a workspace and retain archived history. Source selection captures immutable workflow strategy; lead assessments retain workflow-specific research/qualification snapshots.
+
+The additive 1.0 migration `202610030004_execution_claim_fencing.sql` rejects null execution claim capabilities and null retry intent before delegating to the preserved guarded operations. It changes no application table or historical data. Follow-up/retry authorization also reads the exact saved parent/action/snapshot attempts independently of display windows.
 
 Apply migrations in filename order. Never edit already-applied history or reset a hosted workspace to recover from a schema issue. Rollback SQL fixtures in `supabase/tests` test authorization and state invariants without persistent test data or provider calls.
 
@@ -91,6 +105,6 @@ Intelligence is an authenticated security-invoker PostgreSQL aggregate. It retur
 
 ## Operational limits
 
-Release 0.7 live Trigger worker/recovery and incoming-reply acceptance remain open in the prior verification record. HubSpot owner configuration and exact model pricing also remain prerequisites. Operational lists use bounded windows; larger-volume pagination/retention and historical telemetry gaps remain documented debt. No Calendar, billing, enterprise role system, arbitrary workflow scripting or Release 1.0 deployment is introduced.
+Release 0.7 live Trigger worker/recovery and incoming-reply acceptance remain open in the prior verification record. HubSpot owner configuration and exact model pricing also remain prerequisites. Operational lists use bounded windows; larger-volume pagination/retention and historical telemetry gaps remain documented debt. Calendar, billing, enterprise roles and arbitrary workflow scripting remain outside the frozen 1.0 scope. Production deployment is not yet verified.
 
-Implementation and performed checks are separate claims. Read [Release 0.7 verification](release-0.7-verification.md) and [Release 0.8 verification](release-0.8-verification.md) for the established evidence and unresolved live gates.
+Implementation and performed checks are separate claims. Read [Release 1.0 verification](release-1.0-verification.md) for current performed results and [Release 0.7 verification](release-0.7-verification.md) / [Release 0.8 verification](release-0.8-verification.md) for preserved historical evidence and unresolved live gates.

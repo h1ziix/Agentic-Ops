@@ -40,6 +40,13 @@ export class ExecutionRepository implements ExecutionStore {
     if (error) throw fromDatabaseError("execution_attempt", error);
     return data ? parseDatabaseResult(attemptRowSchema, data, "execution_attempt") : null;
   }
+  async getLatestAttempt(workspace: string, workflow: string, action: string, snapshot: string) {
+    const { data, error } = await this.db.from("execution_attempts").select(ATTEMPT_COLUMNS)
+      .eq("workspace_id", workspace).eq("workflow_id", workflow).eq("action_id", action).eq("snapshot_id", snapshot)
+      .order("attempt_number", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw fromDatabaseError("execution_latest_attempt", error);
+    return data ? parseDatabaseResult(attemptRowSchema, data, "execution_latest_attempt") : null;
+  }
   async load(request: ExecuteContext) {
     // Execution rights never depend on a paged display history. Read the exact saved snapshot
     // and this action's bounded attempts; SQL independently enforces claim and retry ceilings.

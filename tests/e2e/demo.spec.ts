@@ -19,7 +19,7 @@ test("all showcase screens render across the required widths with no overflow, r
         await expect.poll(() => stages.evaluateAll((items) => items.every((stage) => getComputedStyle(stage).opacity === "1"))).toBeTruthy();
         expect(await stages.evaluateAll((items) => new Set(items.map((stage) => Math.round(stage.getBoundingClientRect().top))).size)).toBe(1);
       }
-      if (width === 1440 && ["dashboard", "workflows/kazakhstan-fintech", "approvals", "automation", "intelligence"].includes(route)) {
+      if (width === 1440 && ["dashboard", "workflows/kazakhstan-fintech", "leads", "approvals", "automation", "intelligence"].includes(route)) {
         await expect(page.locator("#main-content > div").first()).toHaveCSS("opacity", "1");
         await page.screenshot({ path: `docs/screenshots/${route === "workflows/kazakhstan-fintech" ? "workflow" : route === "approvals" ? "approval" : route}.png`, fullPage: true, animations: "disabled" });
       }

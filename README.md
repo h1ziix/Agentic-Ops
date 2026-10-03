@@ -1,6 +1,6 @@
 # Agentic Ops
 
-Agentic Ops turns natural-language sales goals into auditable workflows for company research, lead qualification, personalized outreach, human approval, execution and follow-up.
+**Agentic AI sales operations platform.** Agentic Ops turns natural-language sales goals into auditable workflows for company research, lead qualification, personalized outreach, human approval, execution and follow-up.
 
 ![Agentic Ops sample workspace — Dashboard](docs/screenshots/dashboard.png)
 
@@ -33,7 +33,8 @@ Demo records are fictional and clearly labelled. Reserved `.example` contacts an
 
 ```mermaid
 flowchart TD
-    G[Goal + saved strategy snapshot] --> O[Orchestrator]
+    G[Browser / Next.js goal + strategy] --> S[Authenticated server services]
+    S --> O[Orchestrator + AgentRuntime]
     O --> P[Planner]
     P --> R[Research Agent]
     R --> RV[Reviewer Agent]
@@ -45,7 +46,10 @@ flowchart TD
     E --> F[Approved follow-up plan]
     F --> J[Trigger.dev job]
     J --> D[Fresh draft requiring approval]
-    O --> DB[(Supabase state + audit)]
+    R --> T[Bounded Tavily / Gemini tools]
+    O --> OBS[Safe runs / tool events / usage]
+    OBS --> DB[(Supabase state + audit / RLS)]
+    O --> DB
     E --> DB
     DB --> I[Product Intelligence]
 ```
@@ -62,6 +66,10 @@ Approval freezes the exact revision, content, recipient, connection identity/gen
 
 Successful replay returns saved results. Ambiguous external outcomes remain uncertain and cannot silently authorize resend. Gmail acceptance does not prove delivery/read or exactly-once delivery. Workspace RLS, checked server operations, structured evidence validation and server-only credential storage enforce separate trust boundaries. See [security](docs/security.md).
 
+## Observability
+
+Saved runs and activity expose stage/task status, safe tool summaries, timestamps, duration, retries and observed usage. Exact versioned model pricing enables estimated cost; absent telemetry or rates stay unavailable. Intelligence uses workspace-scoped database aggregates with explicit cohort/denominator semantics. Neither a completed agent run nor an approval is treated as proof of an external send.
+
 ## Tech stack
 
 | Layer | Implementation |
@@ -72,11 +80,11 @@ Successful replay returns saved results. Ambiguous external outcomes remain unce
 | AI/research | Gemini structured output, optional OpenAI Planner, Tavily |
 | External execution | Google Gmail and HubSpot OAuth adapters |
 | Durable automation | Trigger.dev with signed callbacks and database-owned job state |
-| Hosting target | Vercel + Supabase; Release 1.0 deployment remains separate |
+| Hosting target | Vercel + Supabase; production acceptance is tracked separately from local verification |
 
 ## Local development
 
-Use Node.js ≥20.9 and npm.
+Use Node.js 24 and npm for the production target. Installed Next.js requires at least 20.9, but Vercel stopped accepting new Node 20 deployments on 1 October 2026. Use the same supported major locally and in Vercel. See [deployment runtime requirements](docs/deployment.md#app-runtime-and-domain).
 
 ```powershell
 npm ci
@@ -102,9 +110,9 @@ See [deployment environment inventory](docs/deployment.md#environment-inventory)
 For an isolated local stack, install the Supabase CLI and a Docker-compatible runtime:
 
 ```powershell
-npx supabase@latest start
-npx supabase@latest db reset
-npx supabase@latest status
+npx supabase@2.119.0 start
+npx supabase@2.119.0 db reset
+npx supabase@2.119.0 status
 ```
 
 `db reset` recreates the **local** database and runs the optional local `supabase/seed.sql`. It creates no login-capable user. The public portfolio demo uses a separate application fixture and requires no database seed.
@@ -112,10 +120,11 @@ npx supabase@latest status
 For a hosted development project:
 
 ```powershell
-npx supabase@latest login
-npx supabase@latest link --project-ref YOUR_PROJECT_REF
-npx supabase@latest migration list --linked
-npx supabase@latest db push --linked
+npx supabase@2.119.0 login
+npx supabase@2.119.0 link --project-ref YOUR_PROJECT_REF
+npx supabase@2.119.0 migration list --linked
+npx supabase@2.119.0 db push --linked --dry-run
+npx supabase@2.119.0 db push --linked
 ```
 
 Do not reset hosted data or use `--include-seed`. Apply versioned files from `supabase/migrations` in order; corrective changes belong in new migrations. Workspace bootstrap occurs on authenticated entry.
@@ -138,6 +147,7 @@ npm test
 npm run lint
 npm run typecheck
 npm run build
+npm run verify:env
 npm run verify:client-secrets
 npm run verify:source-secrets
 npm run report:client-bundles
@@ -146,10 +156,18 @@ npm run report:client-bundles
 Unit tests mock paid APIs and provider mutations. Nine transaction-rollback SQL suites cover Planner, Research, Outreach, Executor, Automation, Observability, strategy, Intelligence and [security schema/grants](supabase/tests/security_audit.sql). Run them **sequentially** on a migrated development database, for example:
 
 ```powershell
-npx supabase@latest db query --linked --file supabase/tests/planner_runtime.sql
+npx supabase@2.119.0 db query --linked --file supabase/tests/planner_runtime.sql
 ```
 
-The remaining suites are in `supabase/tests`. Read-only `verify:research`, `verify:outreach` and `verify:execution` inspect existing workflow results without new provider calls. Mock/SQL passes establish code/database invariants, not live provider acceptance. The bundle report records all generated browser chunks with byte/gzip sizes; their sum is not the JavaScript transferred by a single route.
+The remaining suites are in `supabase/tests`; use staging/development for rollback fixtures. Read-only scripts inspect an existing compatible workflow without new provider calls:
+
+```powershell
+npm run verify:research -- --workflow WORKFLOW_UUID
+npm run verify:outreach -- --workflow WORKFLOW_UUID
+npm run verify:execution -- --workflow WORKFLOW_UUID
+```
+
+These require server Supabase credentials and stage-appropriate persisted records; they are not demo setup. Mock/SQL passes establish code/database invariants, not live provider acceptance. Supabase CLI 2.119.0 command flags were checked during the 1.0 audit; no hosted reset or deployment is implied. The bundle report records all generated browser chunks with byte/gzip sizes; their sum is not the JavaScript transferred by a single route.
 
 The small Playwright suite in `tests/e2e/demo.spec.ts` checks public demo routes at six widths, keyboard/drawer interactions, local draft/decision persistence, reset, reduced motion and missing records. It checks for operational API/mutation requests; it does not test live providers or replace authenticated QA. Start a server first (`playwright.config.ts` does not start one):
 
@@ -165,9 +183,9 @@ The default test origin is `http://localhost:3001`; override with `E2E_BASE_URL`
 
 ## Deployment and project status
 
-Release 0.9 is portfolio and production preparation; this work does not launch Release 1.0. The preserved source checkpoint `f1cf331` combines Releases 0.7–0.8. Existing reports record actual development verification and unresolved live gates.
+The package version is `1.0.0`; the current work is the **Release 1.0 candidate**, starting from the preserved Release 0.9 checkpoint `d89d683`. Feature scope is frozen to verification, hardening, documentation and launch. Production deployment and full live-provider acceptance remain incomplete until their environment-specific evidence is recorded. No production URL or completed launch is claimed here.
 
-Trigger worker/recovery acceptance, actual incoming-reply tests with eligible read consent, HubSpot owner setup and verified exact model pricing remain explicit prerequisites. Current Gmail OAuth is send-only; missing monitoring remains unavailable. Historical telemetry and evidence may be incomplete. Operational record windows and external reconciliation/CRM race limits remain documented debt.
+The launch audit found a logged-out Vercel CLI with no linked project, unconfigured Trigger/HubSpot environments and missing exact pricing. Production Supabase/domain selection and a fresh controlled live workflow also need acceptance. Current Gmail OAuth is send-only; actual incoming-reply testing requires separately permitted eligible read access. Historical telemetry/evidence, operational record windows and external reconciliation/CRM races remain documented limits. See the [exact deployment prerequisites](docs/deployment.md#manual-gates-observed-during-the-10-audit).
 
 | Documentation | Purpose |
 | --- | --- |
@@ -176,6 +194,8 @@ Trigger worker/recovery acceptance, actual incoming-reply tests with eligible re
 | [Demo](docs/demo.md) / [Case study](docs/case-study.md) | Review walkthrough and engineering tradeoffs |
 | [Metric definitions](docs/intelligence-metrics.md) / [Saved strategy](docs/sales-strategy.md) | Canonical analytics and immutable strategy semantics |
 | [Deployment](docs/deployment.md) / [Release checklist](docs/release-checklist.md) | Environment setup, smoke tests and rollback preparation |
+| [Release notes](RELEASE_NOTES.md) / [1.0 audit](docs/release-1.0-audit.md) / [1.0 verification](docs/release-1.0-verification.md) | Candidate scope, findings, performed checks and remaining launch gates |
+| [Portfolio description](docs/portfolio-description.md) / [Interview notes](docs/interview-notes.md) | Copy-ready project description and technical discussion |
 | [Release 0.9 verification](docs/release-0.9-verification.md) | Local polish checks, browser evidence, final-check mapping and open live/production gates |
 | [Release 0.7 verification](docs/release-0.7-verification.md) / [Release 0.8 verification](docs/release-0.8-verification.md) | Performed checks and retained live acceptance limits |
 

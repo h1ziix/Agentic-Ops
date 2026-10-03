@@ -1,4 +1,5 @@
 import "server-only";
+import { serverEnvironment } from "../config/env";
 import { z } from "zod";
 import type { TokenUsage } from "../agents/planner-agent";
 
@@ -23,7 +24,7 @@ export function parseModelPricing(raw: string | undefined): ModelPricing {
   } catch { return {}; }
 }
 
-export function estimateModelCost(model: string, usage: TokenUsage | null, pricing = parseModelPricing(process.env.AI_MODEL_PRICING_JSON)) {
+export function estimateModelCost(model: string, usage: TokenUsage | null, pricing = parseModelPricing(serverEnvironment().AI_MODEL_PRICING_JSON)) {
   const price = pricing[model];
   if (!price || !usage || usage.inputTokens === null || usage.outputTokens === null || usage.totalTokens === null) {
     return { estimatedCostUsd: null, costStatus: "unknown" as const, pricingVersion: price?.version ?? null };

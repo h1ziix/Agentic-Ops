@@ -49,6 +49,6 @@ The central engineering lesson is that agent behavior, external authority and ev
 
 ## Current limits
 
-Release 0.9 prepares presentation and production readiness without launching Release 1.0. Prior reports retain live Trigger worker/recovery, incoming-reply and HubSpot setup gates, missing exact pricing and historical telemetry gaps. Operational windows/pagination, retention policy and external CRM race/reconciliation limits remain documented debt. Calendar, billing, enterprise roles and arbitrary workflow scripting are outside scope.
+The current Release 1.0 candidate audits and hardens the preserved Release 0.9 product. Production deployment and fresh live acceptance are pending; no completed launch is claimed. Prior reports retain live Trigger worker/recovery, incoming-reply and HubSpot setup gates, missing exact pricing and historical telemetry gaps. Operational windows/pagination, retention policy and external CRM race/reconciliation limits remain documented debt. Calendar, billing, enterprise roles and arbitrary workflow scripting are outside scope.
 
-Read [demo guide](demo.md), [security](security.md), [deployment](deployment.md) and [release checklist](release-checklist.md) alongside the performed-check reports for the evidence behind these claims.
+Read [demo guide](demo.md), [security](security.md), [deployment](deployment.md), [release checklist](release-checklist.md) and [1.0 verification](release-1.0-verification.md) for the evidence behind these claims. [Portfolio copy](portfolio-description.md) and [interview notes](interview-notes.md) provide concise versions with the same acceptance limits.

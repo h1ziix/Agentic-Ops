@@ -1,4 +1,5 @@
 import "server-only";
+import { serverEnvironment } from "../config/env";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
@@ -13,7 +14,7 @@ export class OpenAIPlannerProvider implements PlannerProvider {
   constructor(private readonly client?: OpenAI) {}
 
   async generate(input: PlannerInput, model: string, attempt: number): Promise<PlannerProviderResult> {
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    const apiKey = serverEnvironment().OPENAI_API_KEY?.trim();
     if (!this.client && !apiKey) throw new PlannerError("ai_configuration", false);
     const client = this.client ?? new OpenAI({ apiKey, maxRetries: 0, timeout: PLANNER_TIMEOUT_MS });
     try {

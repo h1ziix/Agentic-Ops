@@ -2,6 +2,8 @@
 
 **Agentic AI sales operations platform.** Agentic Ops turns natural-language sales goals into auditable workflows for company research, lead qualification, personalized outreach, human approval, execution and follow-up.
 
+[Live demo](https://agentic-ops-gold.vercel.app/demo/dashboard) · [Workspace sign-in](https://agentic-ops-gold.vercel.app/sign-in) · [Deployment evidence](docs/deployment-progress.md)
+
 ![Agentic Ops sample workspace — Dashboard](docs/screenshots/dashboard.png)
 
 ## What it does
@@ -183,9 +185,9 @@ The default test origin is `http://localhost:3001`; override with `E2E_BASE_URL`
 
 ## Deployment and project status
 
-The package version is `1.0.0`; the current work is the **Release 1.0 candidate**, starting from the preserved Release 0.9 checkpoint `d89d683`. Feature scope is frozen to verification, hardening, documentation and launch. Production deployment and full live-provider acceptance remain incomplete until their environment-specific evidence is recorded. No production URL or completed launch is claimed here.
+The package version is `1.0.0`; the current work is the **Release 1.0 candidate**, starting from the preserved Release 0.9 checkpoint `d89d683`. Feature scope is frozen to verification, hardening, documentation and launch. The application was deployed to Vercel with a separate production Supabase on 4 October 2026; its public demo and unauthenticated security smoke pass. Full authenticated/provider/worker acceptance and the final release tag remain pending. See [deployment evidence](docs/deployment-progress.md).
 
-The launch audit found a logged-out Vercel CLI with no linked project, unconfigured Trigger/HubSpot environments and missing exact pricing. Production Supabase/domain selection and a fresh controlled live workflow also need acceptance. Current Gmail OAuth is send-only; actual incoming-reply testing requires separately permitted eligible read access. Historical telemetry/evidence, operational record windows and external reconciliation/CRM races remain documented limits. See the [exact deployment prerequisites](docs/deployment.md#manual-gates-observed-during-the-10-audit).
+Vercel login, production Supabase/domain selection, all 37 hosted migrations and exact Auth redirects are complete. Fresh account/workflow acceptance, data recovery, Trigger/Google/HubSpot setup and verified pricing remain open. Gmail reply acceptance requires separately permitted eligible read access. Historical telemetry/evidence, operational record windows and external reconciliation/CRM races remain documented limits. See the [release checklist](docs/release-checklist.md).
 
 | Documentation | Purpose |
 | --- | --- |

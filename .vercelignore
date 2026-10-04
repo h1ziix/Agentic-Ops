@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.git/
+.vercel/
+.env*
+output/
+.playwright-cli/
+out/
+build/
+supabase/.temp/
+supabase/.branches/
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store

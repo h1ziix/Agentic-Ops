@@ -1,6 +1,6 @@
 # Release 1.0 readiness checklist
 
-Updated 3 October 2026. **Local candidate verified; production launch blocked.** Checked items refer only to the stated source/local environment. Unchecked items require target setup or live acceptance. See [performed evidence](release-1.0-verification.md), [ranked audit](release-1.0-audit.md) and [deployment runbook](deployment.md).
+Updated 4 October 2026. **Application deployed; full Release 1.0 acceptance pending.** Checked items refer only to the stated environment. Unchecked items require target setup or live acceptance. See [local evidence](release-1.0-verification.md), [production deployment evidence](deployment-progress.md), [ranked audit](release-1.0-audit.md) and [deployment runbook](deployment.md).
 
 ## Code, security and local production QA
 
@@ -23,10 +23,11 @@ Updated 3 October 2026. **Local candidate verified; production launch blocked.**
 - [x] Local catalog verifies RLS, restricted credentials/capabilities, fixed definer search paths and invoker observability.
 - [x] Scoped source/repository/SQL tests exercise direct foreign-workspace IDs and persisted approval guards.
 - [x] Cancellation/archive/history/strategy/approval snapshot invariants pass locally.
-- [ ] Identify intended production Supabase project and verify migration agreement/drift.
+- [x] Select separate production Supabase `hrzakmrlsfxxrhjzsexg`; preflight confirms empty target, final history has all 37 migrations.
 - [ ] Record and validate target backup/restore and encryption-key recovery before migration.
-- [ ] Apply reviewed pending migrations without hosted reset/development seed.
-- [ ] Verify target RLS/grants and two-user/two-workspace direct-ID isolation.
+- [x] Apply all 37 reviewed migrations without hosted reset/development seed.
+- [x] Hosted security audit and catalog confirm 23 RLS tables and no anon SELECT table grants.
+- [ ] Verify two-user/two-workspace direct-ID isolation on production.
 
 ## App environment, domain and Auth
 
@@ -34,10 +35,10 @@ Updated 3 October 2026. **Local candidate verified; production launch blocked.**
 - [x] Local shape preflight passes with documented setup/pricing warnings.
 - [x] Strict production/required-worker preflight correctly blocks incomplete local setup.
 - [x] Auth forms/invalid credentials/protected-route redirect checked in separate unauthenticated local context.
-- [ ] Confirm canonical HTTPS origin and Vercel request duration allowance.
-- [ ] Configure intended production Supabase public key and server writer, Gemini/Tavily and selected Planner credentials/models.
+- [x] Confirm canonical HTTPS origin, Node 24/Fluid hosting and `fra1` functions; route duration configuration retained. No long-running paid request is claimed tested.
+- [x] Configure new production Supabase publishable/server keys and Gemini/Tavily; selected Planner provider passes launch validation.
 - [ ] Configure verified model rates or explicitly accept unknown estimated cost.
-- [ ] Set target Supabase Site URL and exact `/auth/callback` allowlist.
+- [x] Set target Supabase Site URL and exact production `/auth/callback` allowlist; final declared config diff is empty.
 - [ ] Fresh target signup/confirmation/signin/logout/refresh/expiry/bootstrap/onboarding acceptance.
 - [ ] Confirm encryption key is backed up separately and recoverable.
 
@@ -86,11 +87,13 @@ Updated 3 October 2026. **Local candidate verified; production launch blocked.**
 - [x] Exercised local package checks; verified documented CLI command/flag availability and relative links.
 - [x] Rollback/incident procedures documented: stop dispatch, preserve/reconcile history, retain encryption key; external actions are not undone by rollback.
 - [x] Working diff understood; no secrets/private exports tracked; package version 1.0.0 and candidate badge consistent.
-- [ ] Vercel login and intended team/project link. Current exact manual boundary: CLI logged out, no project linked.
-- [ ] Configure production target variables/domain and all preceding target gates.
-- [ ] Perform authorized Vercel/worker deployment and record artifact identities/URL.
-- [ ] Open deployed URL; complete production functional/security/network smoke and controlled A–J acceptance.
+- [x] Vercel login as `h1ziix`, scope `h1ziixs-projects`, linked project `agentic-ops`.
+- [x] Configure 12 production variables and canonical domain; secret values excluded from source/upload inputs.
+- [x] Deploy application to Vercel and record READY deployment identity/public URL.
+- [x] Open deployed URL; public demo E2E and unauthenticated security/network smoke pass.
+- [ ] Deploy and accept the production worker after its required configuration.
+- [ ] Complete fresh authenticated and controlled provider A–J acceptance.
 - [ ] Record remaining limitations/owner acceptance and verified recovery artifacts.
 - [ ] Create clean final release commit and `v1.0.0` tag only after launch gates pass.
 
-No production URL, commit or tag is claimed. The request already authorizes deployment when the intended environment is available; no additional generic approval is needed. Credentials and target selection remain concrete external setup requirements. Post-1.0 ideas are recommendations only.
+The application URL is [agentic-ops-gold.vercel.app](https://agentic-ops-gold.vercel.app). Candidate checkpoint `5c38b56` is committed/pushed; no final release tag is claimed. Production account creation, controlled provider setup/acceptance, recovery and worker gates remain open. The request already authorizes deployment when the intended environment is available; no additional generic approval is needed. Post-1.0 ideas are recommendations only.

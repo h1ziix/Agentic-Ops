@@ -2,6 +2,8 @@
 
 Verified on **3 October 2026**, `Asia/Qyzylorda`, from clean Release 0.9 HEAD **`d89d683`**. AGENTS.md, PROJECT.md and the complete [0.9 checkpoint](release-0.9-verification.md) were read before changes. The [initial blocker audit and freeze](release-1.0-audit.md) preceded significant implementation.
 
+**4 October deployment update:** the application is live at [agentic-ops-gold.vercel.app](https://agentic-ops-gold.vercel.app), backed by separate production Supabase with all 37 migrations. Public E2E and unauthenticated security smoke pass. See [deployment identities and evidence](deployment-progress.md) and the updated [release checklist](release-checklist.md). Authenticated/provider/worker acceptance and the final tag remain open. The numbered audit sections below preserve the 3 October evidence and boundaries; their historical deployment status is superseded by this update.
+
 **The 1.0 candidate passes local production, automated, isolated database and public-demo checks. Production launch is blocked.** Vercel CLI is logged out and no project is linked. Production Supabase/domain/Auth, Trigger worker and controlled provider acceptance also remain open. There is no verified production URL, final release commit or `v1.0.0` tag. Package version `1.0.0` describes the candidate, not launch certification.
 
 No hosted migration, new OAuth consent, paid AI request, email send, CRM write or live worker deployment was performed. Saved hosted records were inspected read-only; browser inspection reused an existing signed-in local session. Evidence below must not be interpreted as a fresh complete live workflow.

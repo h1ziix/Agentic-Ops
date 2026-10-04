@@ -2,7 +2,7 @@
 
 ## Current release boundary
 
-The stages below are historical planning. The current task is Release 1.0 production readiness and launch verification, starting from the preserved Release 0.9 checkpoint `d89d683`. The product is a **1.0 candidate**, not a certified or deployed release. Scope is frozen to audit, targeted hardening, verification, documentation and the existing Vercel/Supabase deployment. Orchestrator, AgentRuntime, deterministic Executor, checked repositories and the existing state/approval system remain authoritative.
+The stages below are historical planning. The current task is Release 1.0 production readiness and launch verification, starting from the preserved Release 0.9 checkpoint `d89d683`. The product is a **1.0 candidate** deployed to Vercel on 4 October 2026, with full authenticated/provider/worker acceptance still pending. [Deployment evidence](docs/deployment-progress.md) records the public URL, separate production Supabase, migration and live smoke results. Scope is frozen to audit, targeted hardening, verification, documentation and the existing Vercel/Supabase deployment. Orchestrator, AgentRuntime, deterministic Executor, checked repositories and the existing state/approval system remain authoritative.
 
 Intelligence uses real persisted records, workspace-safe aggregation, documented company-workflow cohort semantics and nullable usage/cost. Templates guide the Planner; explicit goals remain authoritative. Workflow strategy and lead research/qualification snapshots preserve history after source edits. Analytics do not automatically change prompts, scores, models or approval policy.
 

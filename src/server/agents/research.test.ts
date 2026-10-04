@@ -70,6 +70,63 @@ test("cache replay avoids all Tavily calls and sends only normalized evidence to
   assert.equal(output.researchOnly, true); assert.equal(measured.totalTokens, 30);
 });
 
+test("unsupported citations get one validated repair using identical cached evidence and observed usage", async () => {
+  let searches = 0; let models = 0;
+  const rejected = structuredClone(researchAnalysis);
+  rejected.facts[0].quote = "Fabricated quote must never appear in safe events";
+  const events: string[] = [];
+  const agent = new ResearchAgent({ search: async () => { searches++; return researchSources; } }, {
+    analyze: async (input, sources, _model, _timeout, feedback) => {
+      models++; assert.deepEqual(input, researchInput); assert.deepEqual(sources, researchSources);
+      assert.deepEqual(feedback, models === 1 ? undefined : { validationReason: "Unsupported evidence citation" });
+      return { output: models === 1 ? rejected : researchAnalysis, usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 } };
+    },
+  }, { get: async () => researchSources, set: async () => { throw new Error("Unexpected cache write"); } });
+  const measured = metrics();
+  const result = await agent.research(researchInput, "gemini-fixture", async (type, summary, metadata) => { events.push(JSON.stringify({type, summary, metadata})); }, measured);
+  assert.deepEqual(result.analysis, researchAnalysis); assert.equal(searches, 0); assert.equal(models, 2);
+  assert.equal(result.budget.modelRequests, 2); assert.equal(measured.retryCount, 1); assert.equal(measured.totalTokens, 60);
+  assert.equal(measured.usageObservationCount, 2);
+  assert.ok(events.some((event) => event.includes("Requesting a corrected assessment")));
+  assert.ok(events.every((event) => !event.includes(rejected.facts[0].quote)));
+});
+
+test("a second unsupported assessment still fails without saving or widening the model budget", async () => {
+  let models = 0;
+  const rejected = structuredClone(researchAnalysis); rejected.facts[0].sourceId = "source_99";
+  const agent = new ResearchAgent({ search: async () => { throw new Error("Unexpected search"); } }, {
+    analyze: async () => { models++; return { output: rejected, usage: null }; },
+  }, { get: async () => researchSources, set: async () => {} });
+  const measured = metrics();
+  await assert.rejects(agent.research(researchInput, "gemini-fixture", async () => {}, measured),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output");
+  assert.equal(models, 2); assert.equal(measured.retryCount, 1); assert.equal(measured.taskCount, 0);
+});
+
+test("a provider retry consumes the shared retry before an unsupported assessment", async () => {
+  let models = 0;
+  const rejected = structuredClone(researchAnalysis); rejected.lead.score = 100;
+  const agent = new ResearchAgent({ search: async () => { throw new Error("Unexpected search"); } }, {
+    analyze: async () => { models++; if (models === 1) throw new ResearchError("ai_unavailable", "gemini", true, 0); return { output: rejected, usage: null }; },
+  }, { get: async () => researchSources, set: async () => {} }, async () => {});
+  const measured = metrics();
+  await assert.rejects(agent.research(researchInput, "gemini-fixture", async () => {}, measured),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output");
+  assert.equal(models, 2); assert.equal(measured.retryCount, 1);
+});
+
+test("a search retry prevents validation repair even when a model-call slot remains", async () => {
+  let searches = 0; let models = 0;
+  const rejected = structuredClone(researchAnalysis); rejected.facts[0].quote = "Unsupported quote";
+  const agent = new ResearchAgent({ search: async () => { searches++; if (searches === 1) throw new ResearchError("ai_unavailable", "tavily", true, 0); return researchSources; } }, {
+    analyze: async () => { models++; return { output: rejected, usage: null }; },
+  }, { get: async () => null, set: async () => {} }, async () => {});
+  const measured = metrics();
+  await assert.rejects(agent.research(researchInput, "gemini-fixture", async () => {}, measured),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output");
+  assert.equal(searches, 3); assert.equal(models, 1); assert.equal(measured.retryCount, 1);
+});
+
 test("search cache is persisted before Gemini fails, and the retry reuses evidence", async () => {
   const entries = new Map<string, typeof researchSources>(); let searches = 0; let models = 0;
   const cache: ResearchCache = { get: async (query) => entries.get(query) ?? null, set: async (query, _domain, sources) => { entries.set(query, sources); } };
@@ -113,4 +170,19 @@ test("directory candidates resolve a website from actual evidence before analysi
   const result = await agent.research({...researchInput,website:null,location:"Kazakhstan"},"gemini-fixture",async()=>{},metrics());
   assert.equal(searches,2); assert.equal(resolves,1); assert.equal(analyses,1); assert.equal(result.budget.modelRequests,2);
   assert.equal(result.company.website,"https://fixture.example.com"); assert.equal(result.researchOnly,true);
+});
+
+test("website resolution leaves no third model call for a rejected assessment", async () => {
+  let models = 0; let resolves = 0;
+  const rejected = structuredClone(researchAnalysis); rejected.facts[0].quote = "Unsupported quote";
+  const agent = new ResearchAgent({ search: async () => researchSources }, {
+    analyze: async () => { models++; return { output: rejected, usage: null }; },
+  }, { get: async () => researchSources, set: async () => {} }, async () => {}, {
+    profile: async () => { throw new Error("Unexpected profile"); }, discover: async () => { throw new Error("Unexpected discovery"); },
+    resolve: async () => { resolves++; return { output: { summary: "Verified official domain", candidates: [{ name: "Fixture SaaS", website: "https://fixture.example.com", sourceId: "source_1", quote: "helps software teams manage their projects" }] }, usage: null }; },
+  });
+  const measured = metrics();
+  await assert.rejects(agent.research({...researchInput, website: null}, "gemini-fixture", async () => {}, measured),
+    (error: unknown) => error instanceof ResearchError && error.code === "ai_invalid_output");
+  assert.equal(resolves, 1); assert.equal(models, 1); assert.equal(measured.retryCount, 0);
 });

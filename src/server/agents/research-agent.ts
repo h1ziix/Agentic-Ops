@@ -2,7 +2,7 @@ import { researchInputSchema, researchOutputSchema, targetProfileSchema, validat
 import { deduplicateCompanies, normalizeWebsite } from "@/lib/company-identity";
 import type { AgentMetrics } from "@/lib/validation/agent";
 import type { RuntimeEvent } from "./agent-runtime";
-import type { AnalysisProvider, ResearchPlanningProvider } from "./gemini-provider";
+import { researchValidationReasons, type AnalysisProvider, type ResearchPlanningProvider, type ResearchAnalysisFeedback } from "./gemini-provider";
 import type { SearchProvider } from "./tavily-provider";
 import { RESEARCH_LIMITS, ResearchBudget, ResearchError, type ResearchProvider } from "./research-budget";
 import type { TokenUsage } from "./planner-agent";
@@ -142,18 +142,25 @@ export class ResearchAgent {
       await record("tool_completed", "Tavily evidence normalized", { tool_name: "tavily_search", query, cached: cached ? 1 : 0, source_count: results.length });
     }
     if (!sources.length) throw new ResearchError("ai_invalid_output", "tavily");
-    const analysisResult = await call("gemini", async () => {
-      await record("model_request_started", "Analyzing website evidence and qualifying the automation opportunity", { model, source_count: sources.length });
-      return this.analysis.analyze({ ...input, website }, sources, model, budget.remainingMs());
-    });
-    this.usage(metrics, analysisResult.usage, model);
     const analysis = await (async () => {
-      try { return validateResearchAnalysis(analysisResult.output, sources); }
-      catch (error) {
-        const reason = error instanceof Error && ["Unsupported evidence citation", "Unknown evidence source", "Score components must sum to the score", "Unsupported employee estimate"].includes(error.message)
-          ? error.message : "Invalid structured assessment";
-        await record("error", `Company assessment rejected: ${reason.toLowerCase()}.`, { validation_reason: reason });
-        throw new ResearchError("ai_invalid_output", "gemini");
+      let feedback: ResearchAnalysisFeedback | undefined;
+      for (;;) {
+        const analysisResult = await call("gemini", async () => {
+          await record("model_request_started", "Analyzing website evidence and qualifying the automation opportunity", { model, source_count: sources.length });
+          return this.analysis.analyze({ ...input, website }, sources, model, budget.remainingMs(), feedback);
+        });
+        this.usage(metrics, analysisResult.usage, model);
+        try { return validateResearchAnalysis(analysisResult.output, sources); }
+        catch (error) {
+          const reason = researchValidationReasons.find((reason) => error instanceof Error && reason === error.message) ?? "Invalid structured assessment";
+          await record("error", `Company assessment rejected: ${reason.toLowerCase()}.`, { validation_reason: reason });
+          const failure = new ResearchError("ai_invalid_output", "gemini", true, 0);
+          // Website resolution, transport retries and validation repair share the existing two-call budget.
+          if (budget.modelRequests >= RESEARCH_LIMITS.modelRequests || !budget.retry(failure)) throw new ResearchError("ai_invalid_output", "gemini");
+          feedback = { validationReason: reason };
+          metrics.retryCount = budget.retryCount;
+          await record("retry", "Requesting a corrected assessment from the same cached evidence", { provider: "gemini", validation_reason: reason, delay_ms: 0 });
+        }
       }
     })();
     metrics.taskCount = 1;

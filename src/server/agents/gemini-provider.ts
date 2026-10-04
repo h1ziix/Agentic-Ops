@@ -16,8 +16,10 @@ const responseSchema = z.object({
     cachedContentTokenCount: z.number().int().nonnegative().optional(), thoughtsTokenCount: z.number().int().nonnegative().optional() }).optional(),
 });
 
+export const researchValidationReasons = ["Unsupported evidence citation", "Unknown evidence source", "Score components must sum to the score", "Unsupported employee estimate", "Invalid structured assessment"] as const;
+export interface ResearchAnalysisFeedback { validationReason: typeof researchValidationReasons[number] }
 export interface AnalysisProvider {
-  analyze(input: ResearchInput, sources: ResearchSource[], model: string, timeoutMs: number): Promise<{ output: unknown; usage: TokenUsage | null }>;
+  analyze(input: ResearchInput, sources: ResearchSource[], model: string, timeoutMs: number, feedback?: ResearchAnalysisFeedback): Promise<{ output: unknown; usage: TokenUsage | null }>;
 }
 export interface ResearchPlanningProvider {
   profile(input: WorkflowResearchInput, model: string, timeoutMs: number): Promise<{ output: unknown; usage: TokenUsage | null }>;
@@ -50,8 +52,8 @@ export class GeminiProvider implements AnalysisProvider, ResearchPlanningProvide
     } catch { throw new ResearchError("ai_invalid_output", "gemini", false, 1000, undefined, usage); }
   }
 
-  analyze(input: ResearchInput, sources: ResearchSource[], model: string, timeoutMs: number) {
-    return this.generateStructured(researchAnalysisSchema, RESEARCH_SYSTEM_PROMPT, { ...input, evidence: sources }, model, timeoutMs);
+  analyze(input: ResearchInput, sources: ResearchSource[], model: string, timeoutMs: number, feedback?: ResearchAnalysisFeedback) {
+    return this.generateStructured(researchAnalysisSchema, RESEARCH_SYSTEM_PROMPT, { ...input, evidence: sources, ...(feedback ? { validationFeedback: feedback } : {}) }, model, timeoutMs);
   }
   profile(input: WorkflowResearchInput, model: string, timeoutMs: number) {
     return this.generateStructured(targetProfileSchema, TARGET_PROFILE_PROMPT, input, model, timeoutMs);

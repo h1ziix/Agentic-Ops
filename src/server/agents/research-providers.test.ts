@@ -41,6 +41,22 @@ test("Chunked provider success and quota responses stop at the byte ceiling and 
   }
 });
 
+test("Gemini assessment repair transmits only a safe validation category with unchanged evidence", async (t) => {
+  t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body));
+    const input = JSON.parse(body.contents[0].parts[0].text);
+    assert.deepEqual(input.evidence, researchSources);
+    assert.deepEqual(input.validationFeedback, { validationReason: "Unsupported evidence citation" });
+    assert.equal(input.previousOutput, undefined); assert.equal(body.tools, undefined);
+    return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify(researchAnalysis) }] } }] });
+  });
+  const old = process.env.GEMINI_API_KEY; process.env.GEMINI_API_KEY = "test-server-key";
+  try {
+    const result = await new GeminiProvider().analyze(researchInput, researchSources, "gemini-fixture", 10_000, { validationReason: "Unsupported evidence citation" });
+    assert.deepEqual(result.output, researchAnalysis);
+  } finally { if (old === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = old; }
+});
+
 test("Malformed successful provider JSON is classified safely while malformed quota diagnostics keep retry handling", async (t) => {
   const transport = t.mock.method(globalThis, "fetch", async () => new Response("raw-token-sensitive-payload"));
   await assert.rejects(providerJson("tavily", "https://api.tavily.com/search", {}, 1000),

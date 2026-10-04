@@ -23,6 +23,7 @@ export const RESEARCH_SYSTEM_PROMPT = `${SAFETY}
 Analyze ONLY the supplied evidence. Do not claim to have independently browsed. Unknown industry, location and employee counts remain null.
 Extract at least two useful facts, citing source IDs and exact short quotes from their snippets. Cite evidence for every automation opportunity.
 For each quote, copy a short contiguous passage directly from the cited source's content in its original language. Never translate, paraphrase, join separated sentences, add ellipses, or quote the title. Check the sourceId against the exact snippet. Claims and summaries may be written in English.
+If validationFeedback is supplied, the previous assessment was rejected. Produce a complete new assessment using the SAME supplied evidence. Correct the reported validation failure: copy shorter verbatim quotes with their matching source IDs, leave unsupported employee estimates null, and calculate the score from its components. Do not invent evidence to repair a citation.
 Employee estimates require an explicit published count/range in a cited quote; otherwise return null. Do not inherit a company's location from the search goal when the source does not establish it.
 Separate public facts from hypotheses: possible operational needs are inferences, never verified pain points or buying intent.
 Focus on the product, customers, digital operations and public signs of repeated support/sales/operations work.

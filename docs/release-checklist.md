@@ -79,6 +79,7 @@ Updated 4 October 2026. **Application deployed; full Release 1.0 acceptance pend
 - [x] Demo drafts/decisions persist locally and Reset restores only samples.
 - [x] Seven fictional screenshots visually reviewed; walkthrough requires no billing/consent.
 - [ ] Fresh controlled ICP/template → goal → Planner → Research → Reviewer → Outreach → exact Approval acceptance.
+- [x] Existing owner-created production workflow continues through Research/Qualification/Reviewer/Outreach to one pending draft after the citation-repair fix; result persists after reload. This does not certify strategy, approval/Execute or provider delivery.
 - [ ] Cross-check new controlled workflow/provider outcome in production observability and Intelligence.
 
 ## Documentation, deployment and release

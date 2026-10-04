@@ -2,7 +2,9 @@
 
 Verified 4 October 2026, Asia/Qyzylorda. The application is deployed and its public demo passes production smoke. Full Release 1.0 provider/worker acceptance remains open in the [release checklist](release-checklist.md).
 
-## Deployment identity
+Latest deployment: `dpl_BRuJHk3d4MchHGYd3DYKCztxuqC7` / source `b90049a`, READY at the same canonical URL. The [Research repair report](research-validation-repair.md) records the follow-up fix and successful authenticated continuation to a pending draft. The initial setup evidence below predates that live AI run.
+
+## Initial deployment identity
 
 - Application: [agentic-ops-gold.vercel.app](https://agentic-ops-gold.vercel.app).
 - Public showcase: [demo dashboard](https://agentic-ops-gold.vercel.app/demo/dashboard).
@@ -40,4 +42,4 @@ Production launch validation passes with explicit warnings: Google/HubSpot OAuth
 - Remote public-asset scan: 14 HTML pages and their 31 unique browser scripts contain no configured server credential values or credential signatures; scripts contain no server credential identifiers. Six credential values, including the new production Supabase secret, were compared only in memory. This covers the inspected public pages/assets, not every possible authenticated chunk.
 - A final migration dry run reports `upToDate: true`, with no pending migrations, seeds or roles. Source/history secret scan passes (394 current files, 852 historical blobs, five configured local credentials); whitespace checks pass. The three screenshots changed by the live E2E run were visually reviewed.
 
-No paid AI run, real email, CRM mutation, new OAuth consent or worker dispatch occurred. Fresh signup/confirmation/signin/bootstrap, controlled AI workflow, exact approved Execute/replay, OAuth, durable jobs and incoming-reply acceptance remain pending. No final `v1.0.0` tag or completed provider launch is claimed. Continue using the [deployment runbook](deployment.md) and [release gates](release-checklist.md).
+During the initial deployment verification, no paid AI run, real email, CRM mutation, new OAuth consent or worker dispatch occurred. The subsequent [Research repair verification](research-validation-repair.md) exercised authenticated AI preparation to a pending draft. Full Auth lifecycle, exact approved Execute/replay, OAuth, durable jobs and incoming-reply acceptance remain pending. No final `v1.0.0` tag or completed provider launch is claimed. Continue using the [deployment runbook](deployment.md) and [release gates](release-checklist.md).
